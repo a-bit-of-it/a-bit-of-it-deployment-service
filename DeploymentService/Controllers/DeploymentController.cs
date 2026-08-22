@@ -1,15 +1,25 @@
-﻿using DeploymentService.Services;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 
 namespace DeploymentService.Controllers;
 
 [Route("api/[controller]")]
-public class DeploymentController(IGithubService githubService) : ControllerBase
+public class DeploymentController(Application.Services.DeploymentService deploymentService) : ControllerBase
 {
-    [HttpGet]
-    public async Task<IActionResult> Get()
+    public class DeploymentRequest
     {
-        var images = await githubService.GetDockerImages("website");
-        return Ok(images);
+        public required int CustomerId { get; init; }
+        public required int ApplicationId { get; init; }
+        public required long ImageId { get; set; }
+    }
+    
+    [HttpPost]
+    public async Task<IActionResult> Deploy([FromBody] DeploymentRequest request)
+    {
+        await deploymentService.Deploy(
+            request.CustomerId,
+            request.ApplicationId,
+            request.ImageId);
+
+        return Ok();
     }
 }

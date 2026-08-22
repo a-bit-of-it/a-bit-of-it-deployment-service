@@ -1,6 +1,10 @@
 using System.Net.Http.Headers;
 using DeploymentService;
-using DeploymentService.Services;
+using DeploymentService.Application;
+using DeploymentService.Application.Services;
+using DeploymentService.Infrastructure.Database;
+using DeploymentService.Infrastructure.Github;
+using DeploymentService.Infrastructure.Server;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,7 +14,14 @@ var config =
 if (config is null)
     throw new Exception("No configuration found.");
 
-builder.Services.AddHttpClient<IGithubService, GithubService>(client =>
+builder.Services.AddSingleton(config);
+
+builder.Services.AddSingleton<CustomerService>();
+builder.Services.AddSingleton<IServerConnection, SshConnection>();
+builder.Services.AddSingleton<ICustomerRepository, CustomerRepository>();
+builder.Services.AddSingleton<DeploymentService.Application.Services.DeploymentService>();
+
+builder.Services.AddHttpClient<IImageRepository, GithubImageRepository>(client =>
 {
     client.BaseAddress = new Uri("https://api.github.com/");
     client.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
