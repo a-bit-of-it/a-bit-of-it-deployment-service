@@ -28,7 +28,7 @@ public class DeploymentsController(Application.Services.DeploymentService deploy
         List<ApplicationResponse> applications = new List<ApplicationResponse>();
         foreach (var application in customer.Applications)
         {
-            var dockerImages = await imageRepository.GetDockerImages(application.Registry);
+            var dockerImages = await imageRepository.GetDockerImages(application.Repo);
             var appResponse = new ApplicationResponse(application.Id, dockerImages);    
             applications.Add(appResponse);
         }
@@ -41,7 +41,6 @@ public class DeploymentsController(Application.Services.DeploymentService deploy
     {
         public required int CustomerId { get; init; }
         public required int ApplicationId { get; init; }
-        public required long ImageId { get; set; }
     }
     
     [HttpPost]
@@ -49,8 +48,7 @@ public class DeploymentsController(Application.Services.DeploymentService deploy
     {
         await deploymentService.Deploy(
             request.CustomerId,
-            request.ApplicationId,
-            request.ImageId);
+            request.ApplicationId);
 
         return Ok();
     }

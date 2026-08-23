@@ -1,7 +1,6 @@
 ﻿@page "/"
 @using Frontend.Services
 @inject ICustomerService CustomerService
-@inject NavigationManager NavigationManager
 
 <PageTitle>Customers</PageTitle>
 
@@ -21,10 +20,9 @@ else
     {
         <div class="customer-card">
             <div class="d-flex justify-content-between align-items-center">
-                <h3 class="mb-0">@customer.Name</h3>
-                <button class="btn btn-sm" @onclick="() => GoToDeployments(customer.Id)">
-                    Manage deployments
-                </button>
+                <h3 class="mb-0">
+                    <a href="customers/@customer.Id">@customer.Name</a>
+                </h3>
             </div>
             
             <p>
@@ -53,7 +51,7 @@ else
                             @foreach (var app in customer.Applications)
                             {
                                 <tr>
-                                    <td>@app.Name</td>
+                                    <td><a href="applications/@app.Id">@app.Name</a></td>
                                     <td>@app.Registry</td>
                                     <td><a href="@app.Url" target="_blank">@app.Url</a></td>
                                     <td>@app.Server.Ip</td>
@@ -72,12 +70,12 @@ else
 }
 
 @code {
-    private List<Frontend.Models.Customer>? _customers;
+    private List<Models.Customer>? _customers;
     private readonly HashSet<int> _expandedCustomerIds = new();
 
     protected override async Task OnInitializedAsync()
     {
-        _customers = await CustomerService.GetCustomersAsync();
+        _customers = await CustomerService.GetAllAsync();
     }
 
     private bool IsExpanded(int customerId) => _expandedCustomerIds.Contains(customerId);
@@ -88,11 +86,6 @@ else
         {
             _expandedCustomerIds.Add(customerId);
         }
-    }
-    
-    private void GoToDeployments(int customerId)
-    {
-        NavigationManager.NavigateTo($"customers/{customerId}");
     }
 }
 

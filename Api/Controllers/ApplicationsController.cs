@@ -4,21 +4,21 @@ using Microsoft.AspNetCore.Mvc;
 namespace Api.Controllers;
 
 [Route("api/[controller]")]
-public class CustomersController(CustomerService customerService) : ControllerBase
+public class ApplicationsController(ApplicationService applicationService) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetCustomers()
     {
-        var customers = await customerService.GetAll();
+        var applications = await applicationService.GetAll();
         
-        return Ok(customers);
+        return Ok(applications);
     }
     
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetCustomer(int id)
     {
-        var customer = await customerService.Get(id);
+        var application = await applicationService.Get(id);
      
-        return Ok(customer);
+        return Ok(application);
     }
 }

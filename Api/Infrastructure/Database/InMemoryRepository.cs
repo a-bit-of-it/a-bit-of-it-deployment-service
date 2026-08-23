@@ -4,22 +4,23 @@ using Api.Domain;
 namespace Api.Infrastructure.Database;
 
 // Temp stuff
-public class CustomerRepository : ICustomerRepository
+public class InMemoryRepository : ICustomerRepository, IApplicationRepository
 {
     List<Customer> users;
-    public CustomerRepository()
+    public InMemoryRepository()
     {
         var server = new Domain.Server(0, "85.190.97.44");
         
         var deploymentService = new Domain.Application(0, "Deployment Service", "deployment-service",
             "https://github.com/a-bit-of-it/deployment-service", server);
-        var website = new Domain.Application(1, "Website", "website",
+        
+        var website = new Domain.Application(1, "Our own website", "website",
             "https://github.com/a-bit-of-it/website", server);
         
         var iAmACustomerMyselfHehe = new Customer(0, "a-bit-of-it", "Right here", "Denmark", "Aalborg", "123456789",
             new List<Domain.Application>(){website, deploymentService});
         
-        var firstCustomerApplication = new Domain.Application(3, "Website", "website", "https://github.com/a-bit-of-it/gastronomia-napolitana", server);
+        var firstCustomerApplication = new Domain.Application(3, "Website", "gastronomia-napolitana-website", "https://github.com/a-bit-of-it/gastronomia-napolitana", server);
         var firstCustomer = new Customer(1, "Gastronomia Napolitana", "John F. Kennedys Pl. 2", "Denmark", "Aalborg",
             "98122911", new List<Domain.Application>(){firstCustomerApplication});
 
@@ -38,5 +39,15 @@ public class CustomerRepository : ICustomerRepository
     public Task<Customer?> GetCustomer(int id)
     {
         return Task.FromResult(users.FirstOrDefault(x => x.Id == id));
+    }
+
+    public Task<List<Domain.Application>> GetApplications()
+    {
+        return Task.FromResult(users.SelectMany(x => x.Applications).ToList());
+    }
+
+    public Task<Domain.Application?> GetApplication(int id)
+    {
+        return Task.FromResult(users.SelectMany(x => x.Applications).FirstOrDefault(app => app.Id == id));
     }
 }

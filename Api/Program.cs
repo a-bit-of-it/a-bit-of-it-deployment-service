@@ -18,19 +18,17 @@ if (config is null)
 builder.Services.AddSingleton(config);
 
 builder.Services.AddSingleton<CustomerService>();
+builder.Services.AddSingleton<ApplicationService>();
 builder.Services.AddSingleton<ServerService>();
+builder.Services.AddSingleton<GithubFileFetcher>();
+
 builder.Services.AddSingleton<IServerConnection, SshConnection>();
-builder.Services.AddSingleton<ICustomerRepository, CustomerRepository>();
+builder.Services.AddSingleton<ICustomerRepository, InMemoryRepository>();
+builder.Services.AddSingleton<IApplicationRepository, InMemoryRepository>();
 builder.Services.AddSingleton<DeploymentService>();
 
-builder.Services.AddHttpClient<IImageRepository, GithubImageRepository>(client =>
-{
-    client.BaseAddress = new Uri("https://api.github.com/");
-    client.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
-    client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2026-03-10");
-    client.DefaultRequestHeaders.Add("User-Agent", "deployment-service");
-    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.GitHub.PackagesToken);
-});
+builder.Services.AddHttpClient<IImageRepository, GithubImageRepository>(ConfigureGitHubClient(config));
+builder.Services.AddHttpClient<GithubFileFetcher>(ConfigureGitHubClient(config));
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
@@ -55,3 +53,12 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.Run();
+
+static Action<HttpClient> ConfigureGitHubClient(Config config) => client =>
+{
+    client.BaseAddress = new Uri("https://api.github.com/");
+    client.DefaultRequestHeaders.Add("Accept", "application/vnd.github+json");
+    client.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2026-03-10");
+    client.DefaultRequestHeaders.Add("User-Agent", "deployment-service");
+    client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", config.GitHub.PackagesToken);
+};

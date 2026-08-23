@@ -1,0 +1,25 @@
+﻿@* Pages/Customer.razor *@
+@page "/applications/{Id:int}"
+@using Frontend.Models
+@using Frontend.Services
+@inject IApplicationService ApplicationService
+
+<PageTitle>here we do the managing!</PageTitle>
+
+<h1>here we manage teh app hihi!</h1>
+
+@if (_application != null)
+{
+    <h1>@_application.Name</h1>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    
+    private Application? _application;
+    protected override async Task OnInitializedAsync()
+    {
+        _application = await ApplicationService.GetAsync(Id);
+    }
+}
