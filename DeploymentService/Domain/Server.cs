@@ -1,3 +1,3 @@
 ﻿namespace DeploymentService.Domain;
 
-public record Server(string Ip);
+public record Server(int Id, string Ip);

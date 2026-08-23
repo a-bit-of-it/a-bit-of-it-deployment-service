@@ -1,4 +1,5 @@
-﻿using DeploymentService.Application;
+﻿using System.Net;
+using DeploymentService.Application;
 using DeploymentService.Domain;
 using DeploymentService.Infrastructure.Github.DTOs;
 
@@ -11,8 +12,13 @@ public class GithubImageRepository(HttpClient client) : IImageRepository
     
     public async Task<List<DockerImage>> GetDockerImages(string repository)
     {
-        var images = await client
-            .GetFromJsonAsync<List<GithubDockerImage>>($"orgs/{Organization}/packages/container/{repository}/versions") ?? [];
+        var response = await client
+            .GetAsync($"orgs/{Organization}/packages/container/{repository}/versions");
+        
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return new List<DockerImage>();
+        
+        var images =  await response.Content.ReadFromJsonAsync<List<GithubDockerImage>>() ?? new List<GithubDockerImage>();
 
         var imageBase = $"{Registry}/{Organization}/{repository}";
         

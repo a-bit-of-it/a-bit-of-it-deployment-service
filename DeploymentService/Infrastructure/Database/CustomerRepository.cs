@@ -9,7 +9,7 @@ public class CustomerRepository : ICustomerRepository
     List<Customer> users;
     public CustomerRepository()
     {
-        var server = new Domain.Server("85.190.97.44");
+        var server = new Domain.Server(0, "85.190.97.44");
         
         var deploymentService = new Domain.Application(0, "Deployment Service", "deployment-service",
             "https://github.com/a-bit-of-it/deployment-service", server);

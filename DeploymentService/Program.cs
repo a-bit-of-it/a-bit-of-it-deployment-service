@@ -5,6 +5,7 @@ using DeploymentService.Application.Services;
 using DeploymentService.Infrastructure.Database;
 using DeploymentService.Infrastructure.Github;
 using DeploymentService.Infrastructure.Server;
+using DeploymentService.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,7 @@ if (config is null)
 builder.Services.AddSingleton(config);
 
 builder.Services.AddSingleton<CustomerService>();
+builder.Services.AddSingleton<ServerService>();
 builder.Services.AddSingleton<IServerConnection, SshConnection>();
 builder.Services.AddSingleton<ICustomerRepository, CustomerRepository>();
 builder.Services.AddSingleton<DeploymentService.Application.Services.DeploymentService>();
@@ -34,6 +36,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
 var app = builder.Build();
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.MapControllers();
 
