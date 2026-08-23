@@ -1,5 +1,5 @@
 ﻿@page "/"
-@using FrontendWasm.Services
+@using Frontend.Services
 @inject ICustomerService CustomerService
 @inject NavigationManager NavigationManager
 
@@ -72,7 +72,7 @@ else
 }
 
 @code {
-    private List<FrontendWasm.Models.Customer>? _customers;
+    private List<Frontend.Models.Customer>? _customers;
     private readonly HashSet<int> _expandedCustomerIds = new();
 
     protected override async Task OnInitializedAsync()

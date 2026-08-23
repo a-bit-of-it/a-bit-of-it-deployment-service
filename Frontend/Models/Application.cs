@@ -1,4 +1,4 @@
-﻿namespace FrontendWasm.Models;
+﻿namespace Frontend.Models;
 
 public sealed class Application
 {

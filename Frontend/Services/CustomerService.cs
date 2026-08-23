@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Json;
-using FrontendWasm.Models;
+using Frontend.Models;
 
-namespace FrontendWasm.Services;
+namespace Frontend.Services;
 
 public interface ICustomerService
 {
