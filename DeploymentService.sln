@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeploymentService", "DeploymentService\DeploymentService.csproj", "{BDC32D91-D7F9-45E9-BC15-833A1BFED736}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Api", "Api\Api.csproj", "{BDC32D91-D7F9-45E9-BC15-833A1BFED736}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
