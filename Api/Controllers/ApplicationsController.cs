@@ -15,20 +15,12 @@ public class ApplicationsController(ApplicationService applicationService) : Con
         return Ok();
     }
     
-    [HttpGet]
-    public async Task<IActionResult> GetCustomers()
+    [HttpPost("{id:int}/tags")]
+    public async Task<IActionResult> GetTags(int id)
     {
-        var applications = await applicationService.GetAll();
-        
-        return Ok(applications);
-    }
-    
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetCustomer(int id)
-    {
-        var application = await applicationService.Get(id);
-     
-        return Ok(application);
+        await applicationService.CreateTag(id);
+
+        return Accepted();
     }
     
     [HttpGet("{id:int}/tags")]
@@ -38,4 +30,22 @@ public class ApplicationsController(ApplicationService applicationService) : Con
         
         return Ok(tags);
     }
+    
+    [HttpGet]
+    public async Task<IActionResult> GetApplications()
+    {
+        var applications = await applicationService.GetAll();
+        
+        return Ok(applications);
+    }
+    
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetApplication(int id)
+    {
+        var application = await applicationService.Get(id);
+     
+        return Ok(application);
+    }
+    
+
 }

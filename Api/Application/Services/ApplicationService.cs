@@ -29,6 +29,28 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         logger.LogInformation("Deploy succeeded for {ApplicationName}", application.Name);
     }
     
+    public async Task<List<Tag>> GetTags(int id)
+    {
+        var application = await applicationRepository.GetApplication(id);
+        
+        if (application is null)
+            throw new NotFoundException("No application found.");
+        
+        var tags = await tagRepository.GetTags(application.Repository);
+
+        return tags;
+    }
+    
+    public async Task CreateTag(int id)
+    {
+        var application = await applicationRepository.GetApplication(id);
+        
+        if (application is null)
+            throw new NotFoundException("No application found.");
+        
+        await tagRepository.CreateTag(application.Repository);
+    }
+    
     public async Task<List<Domain.Application>> GetAll()
     {
         return await applicationRepository.GetApplications();
@@ -42,18 +64,6 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
             throw new NotFoundException("No application found.");
         
         return application;
-    }
-
-    public async Task<List<Tag>> GetTags(int applicationId)
-    {
-        var application = await applicationRepository.GetApplication(applicationId);
-        
-        if (application is null)
-            throw new NotFoundException("No application found.");
-        
-        var tags = await tagRepository.GetTags(application.Repository);
-
-        return tags;
     }
     
     private async Task<string> GetComposeFile(string repository, string hardcodedTagTemp)

@@ -29,6 +29,11 @@
             </div>
         }
     </div>
+    
+    <button class="release-btn"
+            @onclick="CreateTagAsync">
+        Create Tag at latest commit
+    </button>
 
     <button class="release-btn"
             disabled="@(_selectedTagId is null)"
@@ -67,6 +72,10 @@
 
         // reset or refresh state as needed
         _selectedTagId = null;
+    }    
+    private async Task CreateTagAsync()
+    {
+        await ApplicationService.CreateTag(Id);
     }
 }
 

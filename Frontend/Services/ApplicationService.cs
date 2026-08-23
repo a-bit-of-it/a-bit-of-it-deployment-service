@@ -8,6 +8,7 @@ public interface IApplicationService
     Task<Application?> GetAsync(int id, CancellationToken ct = default);
     Task<List<Tag>> GetTags(int id, CancellationToken ct = default);
     Task ReleaseAsync(int applicationId, Tag selectedTag);
+    Task CreateTag(int id, CancellationToken ct = default);
 }
 
 public class ApplicationService(HttpClient http) : IApplicationService
@@ -24,13 +25,18 @@ public class ApplicationService(HttpClient http) : IApplicationService
         return tags;
     }
 
-    public async Task ReleaseAsync(int applicationId, Tag tag)
+    public async Task ReleaseAsync(int id, Tag tag)
     {
         var body = new
         {
             tag = tag.Name
         };
         
-        await http.PostAsJsonAsync($"api/applications/{applicationId}/deployments", body);
+        await http.PostAsJsonAsync($"api/applications/{id}/deployments", body);
+    }
+
+    public async Task CreateTag(int id, CancellationToken ct = default)
+    {
+        await http.PostAsJsonAsync($"api/applications/{id}/tags", new { }, ct);
     }
 }

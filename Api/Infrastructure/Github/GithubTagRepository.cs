@@ -8,6 +8,7 @@ namespace Api.Infrastructure.Github;
 public class GithubTagRepository(HttpClient client) : ITagRepository
 {
     private const string Organization = Config.Organization;
+    private const string MainBranch = "main";
     
     public async Task<List<Tag>> GetTags(string repository)
     {
@@ -23,5 +24,55 @@ public class GithubTagRepository(HttpClient client) : ITagRepository
         return tags
             .Select(tag => new Tag(tag.Name, tag.Commit.Sha))
             .ToList();
+    }
+
+    public async Task<Tag> CreateTag(string applicationRepository)
+    {
+        var sha = await GetLatestCommitSha(applicationRepository, MainBranch);
+        var tagName = await GetNextTagName(applicationRepository);
+
+        var response = await client.PostAsJsonAsync(
+            $"repos/{Organization}/{applicationRepository}/git/refs",
+            new
+            {
+                @ref = $"refs/tags/{tagName}",
+                sha
+            });
+
+        response.EnsureSuccessStatusCode();
+
+        return new Tag(tagName, sha);
+    }
+
+    private async Task<string> GetLatestCommitSha(string repository, string branch)
+    {
+        var response = await client
+            .GetAsync($"repos/{Organization}/{repository}/commits/{branch}");
+
+        response.EnsureSuccessStatusCode();
+
+        var commit = await response.Content.ReadFromJsonAsync<GithubCommit>()
+                     ?? throw new InvalidOperationException(
+                         $"Could not resolve latest commit for {repository}@{branch}");
+
+        return commit.Sha;
+    }
+
+    private async Task<string> GetNextTagName(string repository)
+    {
+        var today = DateTime.UtcNow.ToString("yyyy-MM-dd");
+        var existingTags = await GetTags(repository);
+
+        var todaysReleaseNumbers = existingTags
+            .Select(t => t.Name)
+            .Where(name => name.StartsWith($"v{today}-r"))
+            .Select(name => int.TryParse(name.Split("-r").Last(), out var n) ? n : 0)
+            .ToList();
+
+        var nextRelease = todaysReleaseNumbers.Any()
+            ? todaysReleaseNumbers.Max() + 1
+            : 1;
+
+        return $"v{today}-r{nextRelease}";
     }
 }
