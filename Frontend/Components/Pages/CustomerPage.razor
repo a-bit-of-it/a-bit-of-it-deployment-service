@@ -1,0 +1,87 @@
+﻿@* Pages/Customers.razor *@
+@page "/customers"
+@using Frontend.Services
+@inject ICustomerService CustomerService
+@rendermode InteractiveServer
+
+<PageTitle>Customers</PageTitle>
+
+<h1>Customers</h1>
+
+@if (_customers is null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!_customers.Any())
+{
+    <p>No customers found.</p>
+}
+else
+{
+    @foreach (var customer in _customers)
+    {
+        <div class="customer-card">
+            <h3>@customer.Name</h3>
+            <p>
+                @customer.Address, @customer.City, @customer.Country<br />
+                @customer.PhoneNumber
+            </p>
+
+            @if (customer.Applications.Any())
+            {
+                <button class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleExpanded(customer.Id)">
+                    @(IsExpanded(customer.Id) ? "▼" : "▶") Applications (@customer.Applications.Count)
+                </button>
+
+                @if (IsExpanded(customer.Id))
+                {
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Application</th>
+                                <th>Registry</th>
+                                <th>URL</th>
+                                <th>Server IP</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var app in customer.Applications)
+                            {
+                                <tr>
+                                    <td>@app.Name</td>
+                                    <td>@app.Registry</td>
+                                    <td><a href="@app.Url" target="_blank">@app.Url</a></td>
+                                    <td>@app.Server.Ip</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            }
+            else
+            {
+                <p><em>No applications registered.</em></p>
+            }
+        </div>
+    }
+}
+
+@code {
+    private List<Frontend.Models.Customer>? _customers;
+    private readonly HashSet<int> _expandedCustomerIds = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _customers = await CustomerService.GetCustomersAsync();
+    }
+
+    private bool IsExpanded(int customerId) => _expandedCustomerIds.Contains(customerId);
+
+    private void ToggleExpanded(int customerId)
+    {
+        if (!_expandedCustomerIds.Remove(customerId))
+        {
+            _expandedCustomerIds.Add(customerId);
+        }
+    }
+}
