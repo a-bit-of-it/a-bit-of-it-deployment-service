@@ -21,7 +21,7 @@ builder.Services.AddSingleton<CustomerService>();
 builder.Services.AddSingleton<ServerService>();
 builder.Services.AddSingleton<IServerConnection, SshConnection>();
 builder.Services.AddSingleton<ICustomerRepository, CustomerRepository>();
-builder.Services.AddSingleton<Api.Application.Services.DeploymentService>();
+builder.Services.AddSingleton<DeploymentService>();
 
 builder.Services.AddHttpClient<IImageRepository, GithubImageRepository>(client =>
 {
@@ -38,6 +38,11 @@ builder.Services.AddControllers();
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+app.UseCors(policy => policy
+    .WithOrigins("http://localhost:5094")
+    .AllowAnyMethod()
+    .AllowAnyHeader());
 
 app.MapControllers();
 
