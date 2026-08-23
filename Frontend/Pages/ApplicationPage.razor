@@ -1,16 +1,15 @@
-﻿@* Pages/Customer.razor *@
-@page "/applications/{Id:int}"
+﻿@page "/applications/{Id:int}"
 @using Frontend.Models
 @using Frontend.Services
 @inject IApplicationService ApplicationService
 
-<PageTitle>here we do the managing!</PageTitle>
+<PageTitle>Application</PageTitle>
 
-<h1>here we manage teh app hihi!</h1>
+<h1>Manage Application releases</h1>
 
 @if (_application != null)
 {
-    <h1>@_application.Name</h1>
+    <h3>@_application.Name</h3>
 }
 
 @if (_tags != null)
