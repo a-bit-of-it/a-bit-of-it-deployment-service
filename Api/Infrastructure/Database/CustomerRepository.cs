@@ -19,7 +19,7 @@ public class CustomerRepository : ICustomerRepository
         var iAmACustomerMyselfHehe = new Customer(0, "a-bit-of-it", "Right here", "Denmark", "Aalborg", "123456789",
             new List<Domain.Application>(){website, deploymentService});
         
-        var firstCustomerApplication = new Domain.Application(3, "Website", "gastronomia-napolitana-website", "https://github.com/a-bit-of-it/gastronomia-napolitana", server);
+        var firstCustomerApplication = new Domain.Application(3, "Website", "website", "https://github.com/a-bit-of-it/gastronomia-napolitana", server);
         var firstCustomer = new Customer(1, "Gastronomia Napolitana", "John F. Kennedys Pl. 2", "Denmark", "Aalborg",
             "98122911", new List<Domain.Application>(){firstCustomerApplication});
 
