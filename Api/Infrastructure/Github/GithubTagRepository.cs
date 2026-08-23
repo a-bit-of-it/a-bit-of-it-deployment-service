@@ -1,10 +1,11 @@
 ﻿using System.Net;
+using Api.Application;
 using Api.Domain;
 using Api.Infrastructure.Github.DTOs;
 
 namespace Api.Infrastructure.Github;
 
-public class GithubTagRepository(HttpClient client)// : IImageRepository
+public class GithubTagRepository(HttpClient client) : ITagRepository
 {
     private const string Organization = Config.Organization;
     

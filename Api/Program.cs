@@ -23,11 +23,12 @@ builder.Services.AddSingleton<ServerService>();
 builder.Services.AddSingleton<GithubFileFetcher>();
 
 builder.Services.AddSingleton<IServerConnection, SshConnection>();
+builder.Services.AddSingleton<IFilePusher, SftpConnection>();
 builder.Services.AddSingleton<ICustomerRepository, InMemoryRepository>();
 builder.Services.AddSingleton<IApplicationRepository, InMemoryRepository>();
-builder.Services.AddSingleton<DeploymentService>();
 
 builder.Services.AddHttpClient<IImageRepository, GithubImageRepository>(ConfigureGitHubClient(config));
+builder.Services.AddHttpClient<ITagRepository, GithubTagRepository>(ConfigureGitHubClient(config));
 builder.Services.AddHttpClient<GithubFileFetcher>(ConfigureGitHubClient(config));
 
 builder.Services.AddOpenApi();

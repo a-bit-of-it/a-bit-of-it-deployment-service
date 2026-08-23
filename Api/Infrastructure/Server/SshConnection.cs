@@ -41,7 +41,33 @@ public class SshConnection (Config config) : IServerConnection
 
         return Result.Success();
     }
-    
+
+    public async Task DockerPullAndRunAndAllThatStuff(Domain.Server server, string remoteDir)
+    {
+        using var ssh = new SshClient(server.Ip, config.Ssh.Username, config.Ssh.Password);
+        await ssh.ConnectAsync(CancellationToken.None);
+
+        var command = ssh.CreateCommand(
+            $"cd {remoteDir} && docker compose pull && docker compose up -d --remove-orphans"
+        );
+        command.CommandTimeout = TimeSpan.FromMinutes(5);
+
+        var output = command.Execute();
+
+        ssh.Disconnect();
+
+        // logger.LogInformation("Deploy output for {RemoteDir}: {Output}", remoteDir, output);
+
+        if (command.ExitStatus != 0)
+        {
+            // logger.LogError("Deploy failed for {RemoteDir} (exit {ExitStatus}): {Error}",
+            //     remoteDir, command.ExitStatus, command.Error);
+
+            throw new InvalidOperationException(
+                $"Deploy failed on {server.Ip} (exit {command.ExitStatus}): {command.Error}");
+        }
+    }
+
     public async Task<Result> StartDockerContainer(Domain.Server server, DockerImage image)
     {
         using var ssh = new SshClient(server.Ip, config.Ssh.Username, config.Ssh.Password);

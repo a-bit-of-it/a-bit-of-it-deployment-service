@@ -13,13 +13,125 @@
     <h1>@_application.Name</h1>
 }
 
+@if (_tags != null)
+{
+    <div class="tag-list">
+        @foreach (var tag in _tags)
+        {
+            <div class="tag-item @(tag.Name == _selectedTagId ? "selected" : "")"
+                 @onclick="() => SelectTag(tag)">
+                <span class="tag-dot"></span>
+                <span class="tag-name">@tag.Name</span>
+                @if (tag.Name == _selectedTagId)
+                {
+                    <span class="tag-check">✓</span>
+                }
+            </div>
+        }
+    </div>
+
+    <button class="release-btn"
+            disabled="@(_selectedTagId is null)"
+            @onclick="ReleaseAsync">
+        Release
+    </button>
+}
+
 @code {
     [Parameter]
     public int Id { get; set; }
-    
+
     private Application? _application;
+    private List<Tag>? _tags;
+    private string? _selectedTagId;
+
     protected override async Task OnInitializedAsync()
     {
         _application = await ApplicationService.GetAsync(Id);
+        _tags = await ApplicationService.GetTags(Id);
+    }
+
+    private void SelectTag(Tag tag)
+    {
+        // click again to deselect, or swap selection
+        _selectedTagId = _selectedTagId == tag.Name ? null : tag.Name;
+    }
+
+    private async Task ReleaseAsync()
+    {
+        if (_selectedTagId is null) return;
+
+        var selectedTag = _tags!.First(t => t.Name == _selectedTagId);
+        await ApplicationService.ReleaseAsync(Id, selectedTag);
+       // await ApplicationService.ReleaseAsync(Id, selected.Name);
+
+        // reset or refresh state as needed
+        _selectedTagId = null;
     }
 }
+
+
+<style>
+    .tag-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .tag-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border: 1px solid #e2e2e2;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        background: #fff;
+    }
+
+    .tag-item:hover {
+        border-color: #b3b3b3;
+        background: #fafafa;
+    }
+
+    .tag-item.selected {
+        border-color: #4f46e5;
+        background: #eef2ff;
+    }
+
+    .tag-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #4f46e5;
+        flex-shrink: 0;
+    }
+
+    .tag-name {
+        flex: 1;
+        font-weight: 500;
+    }
+
+    .tag-check {
+        color: #4f46e5;
+        font-weight: bold;
+    }
+
+    .release-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        background: #4f46e5;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.15s ease;
+    }
+
+    .release-btn:disabled {
+        background: #c7c7c7;
+        cursor: not-allowed;
+    }
+</style>

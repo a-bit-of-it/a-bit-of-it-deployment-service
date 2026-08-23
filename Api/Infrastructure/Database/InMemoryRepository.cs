@@ -41,6 +41,11 @@ public class InMemoryRepository : ICustomerRepository, IApplicationRepository
         return Task.FromResult(users.FirstOrDefault(x => x.Id == id));
     }
 
+    public Task<Customer?> GetCustomerByApplicationId(int applicationId)
+    {
+        return Task.FromResult(users.FirstOrDefault(u => u.Applications.Any(a => a.Id == applicationId)));
+    }
+
     public Task<List<Domain.Application>> GetApplications()
     {
         return Task.FromResult(users.SelectMany(x => x.Applications).ToList());
