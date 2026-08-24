@@ -5,7 +5,7 @@ using Api.Infrastructure.Github.DTOs;
 
 namespace Api.Infrastructure.Github;
 
-public class GithubTagRepository(HttpClient client) : ITagRepository
+public class GithubTagRepository(HttpClient client, ILogger<GithubTagRepository> logger) : ITagRepository
 {
     private const string Organization = Config.Organization;
     private const string MainBranch = "main";
@@ -49,8 +49,13 @@ public class GithubTagRepository(HttpClient client) : ITagRepository
         var response = await client
             .GetAsync($"repos/{Organization}/{repository}/commits/{branch}");
 
-        response.EnsureSuccessStatusCode();
-
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            logger.LogError("Failed to fetch commit sha for {repository}/{branch}. Error = {error}", repository, branch, error);
+            throw new Exception($"Failed to fetch commit sha for {repository}/{branch}");
+        }
+        
         var commit = await response.Content.ReadFromJsonAsync<GithubCommit>()
                      ?? throw new InvalidOperationException(
                          $"Could not resolve latest commit for {repository}@{branch}");

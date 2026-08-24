@@ -2,5 +2,5 @@
 
 public interface IFilePusher
 {
-    Task<string> Push(Domain.Server server, string contents, string slug);
+    Task<string> Push(Domain.Server server, string contents, string folder);
 }

@@ -6,9 +6,9 @@ namespace Api.Infrastructure.Server;
 
 public class SftpConnection (Config config) : IFilePusher
 {
-    public async Task<string> Push (Domain.Server server, string contents, string slug)
+    public async Task<string> Push (Domain.Server server, string contents, string folder)
     {
-        var remoteDir = $"/opt/deployments/{slug}";
+        var remoteDir = $"/opt/deployments/{folder}";
         var remoteComposePath = $"{remoteDir}/docker-compose.yml";
         
         using var sftp = new SftpClient(server.Ip, config.Ssh.Username, config.Ssh.Password);

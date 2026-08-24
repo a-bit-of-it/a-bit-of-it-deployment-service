@@ -22,7 +22,7 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         
         var composeFile = await GetComposeFile(application.Repository, tag);
         
-        var remoteDir = await filePusher.Push(application.Server, composeFile, $"{customer.Name}-{application.Repository}");
+        var remoteDir = await filePusher.Push(application.Server, composeFile, application.Repository);
 
         await server.DockerPullAndRunAndAllThatStuff(application.Server, remoteDir);
 
