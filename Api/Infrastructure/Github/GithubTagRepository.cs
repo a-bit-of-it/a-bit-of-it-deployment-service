@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using Api.Application;
+using Api.Application.Interfaces;
 using Api.Domain;
 using Api.Infrastructure.Github.DTOs;
 
@@ -26,13 +27,13 @@ public class GithubTagRepository(HttpClient client, ILogger<GithubTagRepository>
             .ToList();
     }
 
-    public async Task<Tag> CreateTag(string applicationRepository)
+    public async Task<Tag> CreateTag(string repository)
     {
-        var sha = await GetLatestCommitSha(applicationRepository, MainBranch);
-        var tagName = await GetNextTagName(applicationRepository);
+        var sha = await GetLatestCommitSha(repository, MainBranch);
+        var tagName = await GetNextTagName(repository);
 
         var response = await client.PostAsJsonAsync(
-            $"repos/{Organization}/{applicationRepository}/git/refs",
+            $"repos/{Organization}/{repository}/git/refs",
             new
             {
                 @ref = $"refs/tags/{tagName}",

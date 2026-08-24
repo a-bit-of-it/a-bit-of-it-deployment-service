@@ -1,7 +1,8 @@
-﻿using Api.Domain;
+﻿using Api.Application.Interfaces;
+using Api.Domain;
 using Api.Exceptions;
 
-namespace Api.Application.Services;
+namespace Api.Application;
 
 public class CustomerService (ICustomerRepository customerRepository)
 {

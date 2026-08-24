@@ -1,9 +1,10 @@
 ﻿using System.Text.RegularExpressions;
+using Api.Application.Interfaces;
 using Api.Domain;
 using Api.Exceptions;
 using Api.Infrastructure.Github;
 
-namespace Api.Application.Services;
+namespace Api.Application;
 
 public class ApplicationService (ICustomerRepository customerRepository, IApplicationRepository applicationRepository, IServerConnection server, IFilePusher filePusher, GithubFileFetcher githubFileFetcher, ITagRepository tagRepository, ILogger<ApplicationService> logger)
 {
@@ -89,7 +90,7 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
 
         var imageRefs = expectedComponents.ToDictionary(
             component => component,
-            component => $"ghcr.io/a-bit-of-it/{repository}-{component}:{tag}");
+            component => $"ghcr.io/{Config.Organization}/{repository}-{component}:{tag}");
 
         var resolvedYaml = composeYaml;
         foreach (var (component, imageRef) in imageRefs)

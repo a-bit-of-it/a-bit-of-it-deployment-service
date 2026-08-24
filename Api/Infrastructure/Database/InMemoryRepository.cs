@@ -1,4 +1,5 @@
 ﻿using Api.Application;
+using Api.Application.Interfaces;
 using Api.Domain;
 
 namespace Api.Infrastructure.Database;

@@ -1,4 +1,4 @@
-﻿namespace Api.Application;
+﻿namespace Api.Application.Interfaces;
 
 public interface IFilePusher
 {

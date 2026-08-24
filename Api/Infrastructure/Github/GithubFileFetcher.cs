@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Text;
+using Api.Infrastructure.Github.DTOs;
 
 namespace Api.Infrastructure.Github;
 
@@ -9,7 +10,7 @@ public class GithubFileFetcher(HttpClient client)
     {
         const string fileName = "docker-compose.yml";
         
-        var url = $"repos/a-bit-of-it/{repository}/contents/{fileName}?ref={tag}";
+        var url = $"repos/{Config.Organization}/{repository}/contents/{fileName}?ref={tag}";
 
         var response = await client.GetAsync(url);
 
@@ -18,19 +19,13 @@ public class GithubFileFetcher(HttpClient client)
 
         response.EnsureSuccessStatusCode();
 
-        var content = await response.Content.ReadFromJsonAsync<GitHubContentResponse>();
+        var content = await response.Content.ReadFromJsonAsync<GithubFile>();
 
         if (content is null || content.Encoding != "base64")
             throw new InvalidOperationException($"Unexpected response fetching '{fileName}' from '{repository}'");
 
-        var bytes = Convert.FromBase64String(content.Content.Replace("\n", ""));
+        var bytes = Convert.FromBase64String(content.Content);
         return Encoding.UTF8.GetString(bytes);
     }
 }
 
-public class GitHubContentResponse
-{
-    public string Content { get; set; } = default!;
-    public string Encoding { get; set; } = default!;
-    public string Sha { get; set; } = default!;
-}

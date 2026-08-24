@@ -1,6 +1,6 @@
 ﻿using Api.Domain;
 
-namespace Api.Application;
+namespace Api.Application.Interfaces;
 
 public interface ICustomerRepository
 {

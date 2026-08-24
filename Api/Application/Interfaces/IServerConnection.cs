@@ -1,7 +1,7 @@
 ﻿using Api.Domain;
 using CSharpFunctionalExtensions;
 
-namespace Api.Application;
+namespace Api.Application.Interfaces;
 
 public interface IServerConnection
 {

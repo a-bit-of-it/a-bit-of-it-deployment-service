@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using Api;
 using Api.Application;
-using Api.Application.Services;
+using Api.Application.Interfaces;
 using Api.Infrastructure.Database;
 using Api.Infrastructure.Github;
 using Api.Infrastructure.Server;
@@ -27,7 +27,6 @@ builder.Services.AddSingleton<IFilePusher, SftpConnection>();
 builder.Services.AddSingleton<ICustomerRepository, InMemoryRepository>();
 builder.Services.AddSingleton<IApplicationRepository, InMemoryRepository>();
 
-builder.Services.AddHttpClient<IImageRepository, GithubImageRepository>(ConfigureGitHubClient(config));
 builder.Services.AddHttpClient<ITagRepository, GithubTagRepository>(ConfigureGitHubClient(config));
 builder.Services.AddHttpClient<GithubFileFetcher>(ConfigureGitHubClient(config));
 

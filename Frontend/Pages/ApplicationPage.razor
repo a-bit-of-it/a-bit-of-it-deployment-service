@@ -21,6 +21,7 @@
                  @onclick="() => SelectTag(tag)">
                 <span class="tag-dot"></span>
                 <span class="tag-name">@tag.Name</span>
+                <span class="tag-name">@tag.CommitSha</span>
                 @if (tag.Name == _selectedTagId)
                 {
                     <span class="tag-check">✓</span>

@@ -1,4 +1,4 @@
-﻿using Api.Application;
+﻿using Api.Application.Interfaces;
 using Api.Domain;
 using CSharpFunctionalExtensions;
 using Renci.SshNet;
@@ -16,9 +16,6 @@ public class SshConnection (Config config) : IServerConnection
         var dockerVersion = RunCommand(
             ssh,
             "docker --version");
-
-        // if (command.ExitStatus is not 0)
-        //     return Result.Failure<ServerInterrogationInfo>($"Command failed. ExitStatus: {command.ExitStatus}. Error: {command.Error}");
         
         ssh.Disconnect();
 
@@ -55,34 +52,12 @@ public class SshConnection (Config config) : IServerConnection
         var output = command.Execute();
 
         ssh.Disconnect();
-
-        // logger.LogInformation("Deploy output for {RemoteDir}: {Output}", remoteDir, output);
-
+        
         if (command.ExitStatus != 0)
         {
-            // logger.LogError("Deploy failed for {RemoteDir} (exit {ExitStatus}): {Error}",
-            //     remoteDir, command.ExitStatus, command.Error);
-
             throw new InvalidOperationException(
                 $"Deploy failed on {server.Ip} (exit {command.ExitStatus}): {command.Error}");
         }
-    }
-
-    public async Task<Result> StartDockerContainer(Domain.Server server, DockerImage image)
-    {
-        using var ssh = new SshClient(server.Ip, config.Ssh.Username, config.Ssh.Password);
-
-        await ssh.ConnectAsync(CancellationToken.None);
-
-        var cmd = $"stop existing container if it exists... then start the newest image in a container"; // TODO
-        var command = ssh.RunCommand(cmd);
-
-        if (command.ExitStatus is not 0)
-            return Result.Failure($"Command failed. ExitStatus: {command.ExitStatus}. Error: {command.Error}");
-        
-        ssh.Disconnect();
-
-        return Result.Success();
     }
     
     private string RunCommand(SshClient ssh, string command)

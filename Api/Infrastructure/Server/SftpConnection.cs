@@ -1,5 +1,5 @@
 ﻿using System.Text;
-using Api.Application;
+using Api.Application.Interfaces;
 using Renci.SshNet;
 
 namespace Api.Infrastructure.Server;
@@ -27,6 +27,7 @@ public class SftpConnection (Config config) : IFilePusher
         return remoteDir;
     }
     
+    // If more than one folder in a path doesn't exist, you must mkdir each individual folder
     private static async Task EnsureRemoteDirectoryAsync(SftpClient sftp, string remoteDir)
     {
         var segments = remoteDir.Split('/', StringSplitOptions.RemoveEmptyEntries);

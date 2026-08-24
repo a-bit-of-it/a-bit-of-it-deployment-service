@@ -1,4 +1,6 @@
-﻿namespace Api;
+﻿using JetBrains.Annotations;
+
+namespace Api;
 
 public class Config
 {
@@ -8,11 +10,13 @@ public class Config
     public required Ssh Ssh { get; init; }
 }
 
+[UsedImplicitly]
 public class GitHub
 {
     public required string PackagesToken { get; init; }
 }
 
+[UsedImplicitly]
 public class Ssh
 {
     public required string Username { get; init; }

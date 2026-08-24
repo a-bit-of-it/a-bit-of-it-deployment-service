@@ -1,6 +1,7 @@
-﻿using Api.Domain;
+﻿using Api.Application.Interfaces;
+using Api.Domain;
 
-namespace Api.Application.Services;
+namespace Api.Application;
 
 public class ServerService (IServerConnection serverConnection, ICustomerRepository customerRepository)
 {

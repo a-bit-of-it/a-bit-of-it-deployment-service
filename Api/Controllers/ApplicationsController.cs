@@ -1,4 +1,4 @@
-﻿using Api.Application.Services;
+﻿using Api.Application;
 using Api.Controllers.Requests;
 using Microsoft.AspNetCore.Mvc;
 
@@ -46,6 +46,4 @@ public class ApplicationsController(ApplicationService applicationService) : Con
      
         return Ok(application);
     }
-    
-
 }

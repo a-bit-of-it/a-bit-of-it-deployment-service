@@ -1,10 +1,9 @@
-﻿namespace Api.Infrastructure.Github.DTOs;
+﻿using JetBrains.Annotations;
 
-public record GithubTag(
-    string Name,
-    GithubTagCommit Commit
-);
+namespace Api.Infrastructure.Github.DTOs;
 
-public record GithubTagCommit(
-    string Sha
-);
+[UsedImplicitly]
+public record GithubTag(string Name, GithubTagCommit Commit);
+
+[UsedImplicitly]
+public record GithubTagCommit(string Sha);
