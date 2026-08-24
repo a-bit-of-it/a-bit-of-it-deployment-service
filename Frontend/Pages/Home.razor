@@ -1,0 +1,105 @@
+﻿@page "/"
+@using Frontend.Services
+@inject ICustomerService CustomerService
+
+<PageTitle>Customers</PageTitle>
+
+<h1>Customers</h1>
+
+@if (_customers is null)
+{
+    <p><em>Loading...</em></p>
+}
+else if (!_customers.Any())
+{
+    <p>No customers found.</p>
+}
+else
+{
+    @foreach (var customer in _customers)
+    {
+        <div class="customer-card">
+            <div class="d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">
+                    <a href="customers/@customer.Id">@customer.Name</a>
+                </h3>
+            </div>
+            
+            <p>
+                @customer.Address, @customer.City, @customer.Country<br />
+                @customer.PhoneNumber
+            </p>
+
+            @if (customer.Applications.Any())
+            {
+                <button class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleExpanded(customer.Id)">
+                    @(IsExpanded(customer.Id) ? "▼" : "▶") Applications (@customer.Applications.Count)
+                </button>
+
+                @if (IsExpanded(customer.Id))
+                {
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Application</th>
+                                <th>Registry</th>
+                                <th>URL</th>
+                                <th>Server IP</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var app in customer.Applications)
+                            {
+                                <tr>
+                                    <td><a href="applications/@app.Id">@app.Name</a></td>
+                                    <td>@app.Registry</td>
+                                    <td><a href="@app.Url" target="_blank">@app.Url</a></td>
+                                    <td>@app.Server.Ip</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            }
+            else
+            {
+                <p><em>No applications registered.</em></p>
+            }
+        </div>
+    }
+}
+
+@code {
+    private List<Models.Customer>? _customers;
+    private readonly HashSet<int> _expandedCustomerIds = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _customers = await CustomerService.GetAllAsync();
+    }
+
+    private bool IsExpanded(int customerId) => _expandedCustomerIds.Contains(customerId);
+
+    private void ToggleExpanded(int customerId)
+    {
+        if (!_expandedCustomerIds.Remove(customerId))
+        {
+            _expandedCustomerIds.Add(customerId);
+        }
+    }
+}
+
+<style>
+    .customer-card {
+        margin-bottom: 1.5rem;
+        padding: 1rem 1.25rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .customer-card h3 {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+    }
+</style>
