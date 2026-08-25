@@ -18,9 +18,9 @@ public class ApplicationsController(ApplicationService applicationService) : Con
     [HttpPost("{id:int}/tags")]
     public async Task<IActionResult> GetTags(int id)
     {
-        await applicationService.CreateTag(id);
+        var tag = await applicationService.CreateTag(id);
 
-        return Accepted();
+        return CreatedAtAction(nameof(GetTags), new { id }, tag);
     }
     
     [HttpGet("{id:int}/tags")]
@@ -29,6 +29,14 @@ public class ApplicationsController(ApplicationService applicationService) : Con
         var tags = await applicationService.GetTags(id);
         
         return Ok(tags);
+    }
+    
+    [HttpGet("{id:int}/workflows/{commitSha}")]
+    public async Task<IActionResult> GetAvailableTags(int id, string commitSha)
+    {
+        var workflow = await applicationService.GetWorkflow(id, commitSha);
+        
+        return Ok(workflow);
     }
     
     [HttpGet]

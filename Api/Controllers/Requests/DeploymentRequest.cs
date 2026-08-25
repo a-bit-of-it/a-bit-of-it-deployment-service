@@ -1,6 +1,8 @@
-﻿namespace Api.Controllers.Requests;
+﻿using Api.Domain;
+
+namespace Api.Controllers.Requests;
 
 public class DeploymentRequest
 {
-    public required string Tag { get; init; }
+    public required Tag Tag { get; init; }
 }
