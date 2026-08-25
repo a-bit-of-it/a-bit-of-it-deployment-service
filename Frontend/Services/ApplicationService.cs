@@ -9,6 +9,7 @@ public interface IApplicationService
     Task<List<Tag>> GetTags(int id, CancellationToken ct = default);
     Task ReleaseAsync(int applicationId, Tag selectedTag);
     Task CreateTag(int id, CancellationToken ct = default);
+    Task<Workflow?> GetWorkflow(int id, string commitSha, CancellationToken ct = default);
 }
 
 public class ApplicationService(HttpClient http) : IApplicationService
@@ -24,14 +25,16 @@ public class ApplicationService(HttpClient http) : IApplicationService
         var tags = await http.GetFromJsonAsync<List<Tag>>($"api/applications/{id}/tags", ct) ?? [];
         return tags;
     }
+    
+    public async Task<Workflow?> GetWorkflow(int id, string commitSha, CancellationToken ct = default)
+    {
+        var workflow = await http.GetFromJsonAsync<Workflow>($"api/applications/{id}/workflows/{commitSha}", ct);
+        return workflow;
+    }
 
     public async Task ReleaseAsync(int id, Tag tag)
     {
-        var body = new
-        {
-            tag = tag.Name
-        };
-        
+        var body = new { tag };
         await http.PostAsJsonAsync($"api/applications/{id}/deployments", body);
     }
 

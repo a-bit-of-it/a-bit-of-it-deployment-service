@@ -6,11 +6,12 @@ using Api.Infrastructure.Github;
 
 namespace Api.Application;
 
-public class ApplicationService (ICustomerRepository customerRepository, IApplicationRepository applicationRepository, IServerConnection server, IFilePusher filePusher, GithubFileFetcher githubFileFetcher, ITagRepository tagRepository, ILogger<ApplicationService> logger)
+public class ApplicationService (ICustomerRepository customerRepository, IApplicationRepository applicationRepository, IServerConnection server, IFilePusher filePusher, GithubDockerComposeFileFetcher dockerComposeFileFetcher, ITagRepository tagRepository, GithubWorkflowRepository workflowRepository, ILogger<ApplicationService> logger)
 {
-    public async Task Deploy(int applicationId, string tag)
+    public async Task Deploy(int applicationId, Tag tag)
     {
         logger.LogInformation("Beginning deployment...");
+        
         var customer = await customerRepository.GetCustomerByApplicationId(applicationId);
 
         if (customer == null)
@@ -21,7 +22,15 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         if (application == null)
             throw new NotFoundException($"Could not find application. Id = {applicationId}.");
         
-        var composeFile = await GetComposeFile(application.Repository, tag);
+        var workflow = await workflowRepository.GetWorkflow(application.Repository, tag.CommitSha);
+        
+        if (workflow == null)
+            throw new NotFoundException($"Could not find workflow for tag {tag.Name}.");
+        
+        if (!workflow.IsCompletedSuccessfully)
+            throw new Exception("Workflow is not completed successfully.");
+        
+        var composeFile = await GetComposeFile(application.Repository, tag.Name);
         
         var remoteDir = await filePusher.Push(application.Server, composeFile, application.Repository);
 
@@ -52,6 +61,21 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         await tagRepository.CreateTag(application.Repository);
     }
     
+    public async Task<Workflow> GetWorkflow(int id, string commitSha)
+    {
+        var application = await applicationRepository.GetApplication(id);
+        
+        if (application is null)
+            throw new NotFoundException("No application found.");
+        
+        var workflow = await workflowRepository.GetWorkflow(application.Repository, commitSha);
+        
+        if  (workflow == null)
+            throw new NotFoundException($"Workflow for tag {commitSha} not found.");
+        
+        return workflow;
+    }
+    
     public async Task<List<Domain.Application>> GetAll()
     {
         return await applicationRepository.GetApplications();
@@ -67,10 +91,10 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         return application;
     }
     
-    private async Task<string> GetComposeFile(string repository, string hardcodedTagTemp)
+    private async Task<string> GetComposeFile(string repository, string tagName)
     {
-        var composeFile = await githubFileFetcher.GetComposeFileAsync(repository, hardcodedTagTemp);
-        var resolvedComposeFile = ResolveComposeFile(composeFile, repository, hardcodedTagTemp);
+        var composeFile = await dockerComposeFileFetcher.GetComposeFileAsync(repository, tagName);
+        var resolvedComposeFile = ResolveComposeFile(composeFile, repository, tagName);
 
         return resolvedComposeFile;
     }

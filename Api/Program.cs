@@ -20,15 +20,16 @@ builder.Services.AddSingleton(config);
 builder.Services.AddSingleton<CustomerService>();
 builder.Services.AddSingleton<ApplicationService>();
 builder.Services.AddSingleton<ServerService>();
-builder.Services.AddSingleton<GithubFileFetcher>();
 
 builder.Services.AddSingleton<IServerConnection, SshConnection>();
 builder.Services.AddSingleton<IFilePusher, SftpConnection>();
 builder.Services.AddSingleton<ICustomerRepository, InMemoryRepository>();
 builder.Services.AddSingleton<IApplicationRepository, InMemoryRepository>();
 
-builder.Services.AddHttpClient<ITagRepository, GithubTagRepository>(ConfigureGitHubClient(config));
-builder.Services.AddHttpClient<GithubFileFetcher>(ConfigureGitHubClient(config));
+var httpClient = ConfigureGitHubClient(config);
+builder.Services.AddHttpClient<ITagRepository, GithubTagRepository>(httpClient);
+builder.Services.AddHttpClient<GithubDockerComposeFileFetcher>(httpClient);
+builder.Services.AddHttpClient<GithubWorkflowRepository>(httpClient);
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();

@@ -31,6 +31,14 @@ public class ApplicationsController(ApplicationService applicationService) : Con
         return Ok(tags);
     }
     
+    [HttpGet("{id:int}/workflows/{commitSha}")]
+    public async Task<IActionResult> GetAvailableTags(int id, string commitSha)
+    {
+        var workflow = await applicationService.GetWorkflow(id, commitSha);
+        
+        return Ok(workflow);
+    }
+    
     [HttpGet]
     public async Task<IActionResult> GetApplications()
     {

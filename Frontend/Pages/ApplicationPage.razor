@@ -12,6 +12,12 @@
     <h3>@_application.Name</h3>
 }
 
+@if (_workflow != null)
+{
+    <span>@_workflow.Status</span>
+    <span>@_workflow.Conclusion</span>
+}
+
 @if (_tags != null)
 {
     <div class="tag-list">
@@ -49,11 +55,19 @@
     private Application? _application;
     private List<Tag>? _tags;
     private string? _selectedTagId;
+    private Workflow? _workflow;
 
     protected override async Task OnInitializedAsync()
     {
         _application = await ApplicationService.GetAsync(Id);
         _tags = await ApplicationService.GetTags(Id);
+
+        var tag = _tags.FirstOrDefault();
+
+        if (tag == null)
+            return;
+        
+        _workflow = await ApplicationService.GetWorkflow(Id, tag.CommitSha);
     }
 
     private void SelectTag(Tag tag)
@@ -68,7 +82,6 @@
 
         var selectedTag = _tags!.First(t => t.Name == _selectedTagId);
         await ApplicationService.ReleaseAsync(Id, selectedTag);
-       // await ApplicationService.ReleaseAsync(Id, selected.Name);
 
         // reset or refresh state as needed
         _selectedTagId = null;
