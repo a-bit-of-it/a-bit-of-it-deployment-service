@@ -27,7 +27,7 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         if (workflow == null)
             throw new NotFoundException($"Could not find workflow for tag {tag.Name}.");
         
-        if (!workflow.IsCompletedSuccessfully)
+        if (workflow is { IsComplete: false, IsSuccessful: false })
             throw new Exception("Workflow is not completed successfully.");
         
         var composeFile = await GetComposeFile(application.Repository, tag.Name);
@@ -51,14 +51,16 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         return tags;
     }
     
-    public async Task CreateTag(int id)
+    public async Task<Tag> CreateTag(int id)
     {
         var application = await applicationRepository.GetApplication(id);
         
         if (application is null)
             throw new NotFoundException("No application found.");
         
-        await tagRepository.CreateTag(application.Repository);
+        var tag = await tagRepository.CreateTag(application.Repository);
+
+        return tag;
     }
     
     public async Task<Workflow> GetWorkflow(int id, string commitSha)

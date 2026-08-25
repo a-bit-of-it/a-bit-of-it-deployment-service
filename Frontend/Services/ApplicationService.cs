@@ -8,7 +8,7 @@ public interface IApplicationService
     Task<Application?> GetAsync(int id, CancellationToken ct = default);
     Task<List<Tag>> GetTags(int id, CancellationToken ct = default);
     Task ReleaseAsync(int applicationId, Tag selectedTag);
-    Task CreateTag(int id, CancellationToken ct = default);
+    Task<Tag> CreateTag(int id, CancellationToken ct = default);
     Task<Workflow?> GetWorkflow(int id, string commitSha, CancellationToken ct = default);
 }
 
@@ -38,8 +38,14 @@ public class ApplicationService(HttpClient http) : IApplicationService
         await http.PostAsJsonAsync($"api/applications/{id}/deployments", body);
     }
 
-    public async Task CreateTag(int id, CancellationToken ct = default)
+    public async Task<Tag> CreateTag(int id, CancellationToken ct = default)
     {
-        await http.PostAsJsonAsync($"api/applications/{id}/tags", new { }, ct);
+        var haah = await http.PostAsJsonAsync($"api/applications/{id}/tags", new { }, ct);
+
+        if (haah.IsSuccessStatusCode)
+            return await haah.Content.ReadFromJsonAsync<Tag>(cancellationToken: ct) ?? throw new Exception("Could not parse response.");
+        
+        var error = await haah.Content.ReadAsStringAsync(ct);
+        throw new Exception("Could not create tag " + error);
     }
 }

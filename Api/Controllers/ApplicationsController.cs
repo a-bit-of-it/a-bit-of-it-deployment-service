@@ -18,9 +18,9 @@ public class ApplicationsController(ApplicationService applicationService) : Con
     [HttpPost("{id:int}/tags")]
     public async Task<IActionResult> GetTags(int id)
     {
-        await applicationService.CreateTag(id);
+        var tag = await applicationService.CreateTag(id);
 
-        return Accepted();
+        return CreatedAtAction(nameof(GetTags), new { id }, tag);
     }
     
     [HttpGet("{id:int}/tags")]

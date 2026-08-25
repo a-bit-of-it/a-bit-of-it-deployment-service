@@ -15,6 +15,6 @@ public class GithubWorkflowRepository(HttpClient client, ILogger<GithubWorkflowR
             return null;
 
         var workflow = workflows.Runs.First();
-        return new Workflow(workflow.Id, workflow.Status, workflow.Conclusion);
+        return new Workflow(workflow.Id, workflow.Status == "completed", workflow.Conclusion == "success");
     }
 }
