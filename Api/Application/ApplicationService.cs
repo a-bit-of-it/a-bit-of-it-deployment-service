@@ -6,7 +6,7 @@ using Api.Infrastructure.Github;
 
 namespace Api.Application;
 
-public class ApplicationService (ICustomerRepository customerRepository, IApplicationRepository applicationRepository, IServerConnection server, IFilePusher filePusher, GithubDockerComposeFileFetcher dockerComposeFileFetcher, ITagRepository tagRepository, GithubWorkflowRepository workflowRepository, ILogger<ApplicationService> logger)
+public class ApplicationService (ICustomerRepository customerRepository, IApplicationRepository applicationRepository, IServerConnection server, IFilePusher filePusher, GithubDockerComposeFileFetcher dockerComposeFileFetcher, ITagRepository tagRepository, GithubWorkflowRepository workflowRepository, IReleaseRepository releaseRepository, ILogger<ApplicationService> logger)
 {
     public async Task Deploy(int applicationId, Tag tag)
     {
@@ -35,7 +35,9 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         var remoteDir = await filePusher.Push(application.Server, composeFile, application.Repository);
 
         await server.DockerPullAndRunAndAllThatStuff(application.Server, remoteDir);
-
+        
+        await releaseRepository.CreateRelease(application.Repository, tag.Name);
+        
         logger.LogInformation("Deploy succeeded for {ApplicationName}", application.Name);
     }
     

@@ -28,6 +28,7 @@ builder.Services.AddSingleton<IApplicationRepository, InMemoryRepository>();
 
 var httpClient = ConfigureGitHubClient(config);
 builder.Services.AddHttpClient<ITagRepository, GithubTagRepository>(httpClient);
+builder.Services.AddHttpClient<IReleaseRepository, GithubReleaseRepository>(httpClient);
 builder.Services.AddHttpClient<GithubDockerComposeFileFetcher>(httpClient);
 builder.Services.AddHttpClient<GithubWorkflowRepository>(httpClient);
 
