@@ -3,6 +3,7 @@ using Api.Application.Interfaces;
 using Api.Domain;
 using Api.Exceptions;
 using Api.Infrastructure.Github;
+using Humanizer;
 
 namespace Api.Application;
 
@@ -31,10 +32,12 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
             throw new Exception("Workflow is not completed successfully.");
         
         var composeFile = await GetComposeFile(application.Repository, tag.Name);
+        var customerName = customer.Name.Kebaberize();
+        var remoteDeploymentPath = $"{customerName}/{application.Name.Kebaberize()}";
         
-        var remoteDir = await filePusher.Push(application.Server, composeFile, application.Repository);
+        var remoteDir = await filePusher.Push(application.Server, composeFile, remoteDeploymentPath);
 
-        await server.DockerPullAndRunAndAllThatStuff(application.Server, remoteDir);
+        await server.Deploy(application.Server, customerName, remoteDir);
         
         await releaseRepository.CreateRelease(application.Repository, tag.Name);
         
