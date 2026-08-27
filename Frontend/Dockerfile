@@ -7,8 +7,8 @@ RUN dotnet restore Frontend/Frontend.csproj
 COPY Frontend/ Frontend/
 RUN dotnet publish Frontend/Frontend.csproj -c Release -o /app/publish --no-restore
 
+# Stage 2: serve
 FROM nginx:alpine AS final
 COPY --from=build /app/publish/wwwroot /usr/share/nginx/html
 COPY Frontend/nginx.conf /etc/nginx/conf.d/default.conf
-
 EXPOSE 80
