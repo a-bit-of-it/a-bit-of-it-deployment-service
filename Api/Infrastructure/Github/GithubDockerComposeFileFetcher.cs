@@ -6,7 +6,7 @@ namespace Api.Infrastructure.Github;
 
 public class GithubDockerComposeFileFetcher(HttpClient client)
 {
-    private const string FileName = "docker-compose.yml";
+    private const string FileName = "docker-compose.deployment.yml";
 
     public async Task<string> GetComposeFileAsync(string repository, string tag)
     {

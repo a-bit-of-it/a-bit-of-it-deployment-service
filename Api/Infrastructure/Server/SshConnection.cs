@@ -39,13 +39,13 @@ public class SshConnection (Config config) : IServerConnection
         return Result.Success();
     }
 
-    public async Task DockerPullAndRunAndAllThatStuff(Domain.Server server, string remoteDir)
+    public async Task Deploy(Domain.Server server, string customerName, string remoteDir)
     {
         using var ssh = new SshClient(server.Ip, config.Ssh.Username, config.Ssh.Password);
         await ssh.ConnectAsync(CancellationToken.None);
 
         var command = ssh.CreateCommand(
-            $"cd {remoteDir} && docker compose pull && docker compose up -d --remove-orphans"
+            $"cd {remoteDir} && docker compose -p {customerName} pull && docker compose -p {customerName} up -d --remove-orphans"
         );
         command.CommandTimeout = TimeSpan.FromMinutes(5);
 
