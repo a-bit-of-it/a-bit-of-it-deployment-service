@@ -21,7 +21,7 @@ public class GithubReleaseRepository(HttpClient client, ILogger<GithubWorkflowRe
                       ?? throw new InvalidOperationException(
                           $"Could not parse release response for {repository}@{tagName}");
 
-        return new Release(release.Id, release.Name, release.CreatedAt, release.HtmlUrl);
+        return new Release(release.Id, release.Name, release.CreatedAt, release.Url);
     }
     
     public async Task<Release?> GetLatestRelease(string repository)
@@ -38,9 +38,18 @@ public class GithubReleaseRepository(HttpClient client, ILogger<GithubWorkflowRe
                       ?? throw new InvalidOperationException(
                           $"Could not parse latest release response for {repository}");
 
-        return new Release(release.Id, release.Name, release.CreatedAt, release.HtmlUrl);
+        return new Release(release.Id, release.Name, release.CreatedAt, release.Url);
     }
-    
+
+    public async Task SetLatestRelease(string repository, long releaseId)
+    {
+        var response = await client.PatchAsJsonAsync(
+            $"repos/{Config.Organization}/{repository}/releases/{releaseId}",
+            new { make_latest = "true" });
+
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task<Release> CreateRelease(string repository, string tagName)
     {
         var response = await client.PostAsJsonAsync(
@@ -58,6 +67,6 @@ public class GithubReleaseRepository(HttpClient client, ILogger<GithubWorkflowRe
                       ?? throw new InvalidOperationException(
                           $"Could not parse release response for {repository}@{tagName}");
 
-        return new Release(release.Id, release.Name, release.CreatedAt, release.HtmlUrl);
+        return new Release(release.Id, release.Name, release.CreatedAt, release.Url);
     }
 }

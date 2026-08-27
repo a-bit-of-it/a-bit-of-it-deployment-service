@@ -62,4 +62,20 @@ public class ApplicationsController(ApplicationService applicationService) : Con
 
         return Ok(release);
     }
+
+    [HttpGet("{id:int}/releases/{tagName}")]
+    public async Task<IActionResult> GetRelease(int id, string tagName)
+    {
+        var release = await applicationService.GetRelease(id, tagName);
+
+        return Ok(release);
+    }
+
+    [HttpPost("{id:int}/rollbacks")]
+    public async Task<IActionResult> Rollback(int id, [FromBody] DeploymentRequest request)
+    {
+        await applicationService.Rollback(id, request.Tag);
+
+        return Ok();
+    }
 }

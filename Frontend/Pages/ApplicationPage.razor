@@ -1,4 +1,4 @@
-﻿@page "/applications/{Id:int}"
+@page "/applications/{Id:int}"
 @using Frontend.Models
 @using Frontend.Services
 @implements IAsyncDisposable
@@ -7,8 +7,8 @@
 <PageTitle>Application</PageTitle>
 
 <div class="page">
-    <div class="page-header">
-        <div>
+    <div class="release-panel">
+        <div class="panel-left">
             <h1>Manage Application releases</h1>
             @if (_application != null)
             {
@@ -20,56 +20,103 @@
             }
         </div>
 
-        @if (_workflow != null)
-        {
+        <div class="panel-right">
             <div class="status-area">
-                <span class="status-badge @StatusCssClass">
-                    @(_workflow.IsComplete ? "Completed" : "Running...")
+                <span class="status-badge @StatusCssClass(_pendingWorkflow)">
+                    @StatusLabel(_pendingWorkflow)
                 </span>
                 @if (_isPolling)
                 {
                     <span class="spinner" title="Waiting for workflow..."></span>
                 }
             </div>
-        }
-    </div>
-    
-    <div class="actions">
-        <button class="btn btn-secondary"
-                disabled="@_isPolling"
-                @onclick="CreateTagAsync">
-            @if (_isPolling)
-            {
-                <span class="spinner spinner-inline"></span>
-            }
-            Create Tag at latest commit
-        </button>
 
-        <button class="btn btn-primary"
-                disabled="@(!CanRelease)"
-                @onclick="ReleaseAsync">
-            Release
-        </button>
-    </div>
-
-    @if (_tags != null)
-    {
-        <div class="tag-list">
-            @foreach (var tag in _tags)
-            {
-                <div class="tag-item @(tag.Name == _selectedTag?.Name ? "selected" : "")"
-                     @onclick="() => SelectTag(tag)">
-                    <span class="tag-dot"></span>
-                    <span class="tag-name">@tag.Name</span>
-                    <span class="tag-sha">@tag.CommitSha</span>
-                    @if (_selectedTag != null && tag.Name == _selectedTag.Name)
+            <div class="actions">
+                <button class="btn btn-secondary"
+                        disabled="@_isPolling"
+                        @onclick="CreateNewReleaseAsync">
+                    @if (_isPolling)
                     {
-                        <span class="tag-check">✓</span>
+                        <span class="spinner spinner-inline"></span>
+                    }
+                    Create new release
+                </button>
+
+                <button class="btn btn-primary"
+                        disabled="@(!CanRelease || _isReleasing)"
+                        @onclick="ReleaseAsync">
+                    @if (_isReleasing)
+                    {
+                        <span class="spinner spinner-inline"></span>
+                    }
+                    Release
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="tag-history">
+        <button class="btn btn-link tag-history-toggle" @onclick="ToggleTagHistory">
+            @(_showTagHistory ? "Hide tags" : "View tags")
+        </button>
+
+        @if (_showTagHistory)
+        {
+            <div class="tag-detail">
+                @if (_selectedTag == null)
+                {
+                    <span class="tag-detail-hint">Select a tag below to inspect its workflow and release.</span>
+                }
+                else
+                {
+                    <div class="tag-detail-row">
+                        <span class="tag-detail-name">@_selectedTag.Name</span>
+                        <span class="status-badge @StatusCssClass(_selectedTagWorkflow)">
+                            @StatusLabel(_selectedTagWorkflow)
+                        </span>
+
+                        @if (_selectedTagRelease != null)
+                        {
+                            <span class="tag-detail-release">Release: @_selectedTagRelease.Name (@_selectedTagRelease.CreatedAt.ToLocalTime())</span>
+
+                            <button class="btn btn-primary"
+                                    disabled="@(!CanRollback || _isRollingBack)"
+                                    @onclick="RollbackAsync">
+                                @if (_isRollingBack)
+                                {
+                                    <span class="spinner spinner-inline"></span>
+                                }
+                                Rollback
+                            </button>
+                        }
+                        else if (_selectedTagWorkflow is { IsComplete: true, IsCompletedSuccessfully: true })
+                        {
+                            <span class="tag-detail-hint">No release found for this tag.</span>
+                        }
+                    </div>
+                }
+            </div>
+
+            @if (_tags != null)
+            {
+                <div class="tag-list">
+                    @foreach (var tag in _tags)
+                    {
+                        <div class="tag-item @(tag.Name == _selectedTag?.Name ? "selected" : "")"
+                             @onclick="() => SelectTag(tag)">
+                            <span class="tag-dot"></span>
+                            <span class="tag-name">@tag.Name</span>
+                            <span class="tag-sha">@tag.CommitSha</span>
+                            @if (_selectedTag != null && tag.Name == _selectedTag.Name)
+                            {
+                                <span class="tag-check">✓</span>
+                            }
+                        </div>
                     }
                 </div>
             }
-        </div>
-    }
+        }
+    </div>
 </div>
 
 @code {
@@ -78,24 +125,47 @@
 
     private Application? _application;
     private List<Tag>? _tags;
-    private Tag? _selectedTag;
-    private Workflow? _workflow;
     private Release? _latestRelease;
+
+    // "Create new release" flow (top panel)
+    private Tag? _pendingTag;
+    private Workflow? _pendingWorkflow;
     private bool _isPolling;
+    private bool _isReleasing;
+
+    // Tag history flow (bottom panel)
+    private bool _showTagHistory;
+    private Tag? _selectedTag;
+    private Workflow? _selectedTagWorkflow;
+    private Release? _selectedTagRelease;
+    private bool _isRollingBack;
 
     private PeriodicTimer? _pollTimer;
     private CancellationTokenSource? _pollCts;
 
     private bool CanRelease =>
-        _selectedTag is not null &&
-        _workflow is { IsCompletedSuccessfully: true };
+        _pendingTag is not null &&
+        _pendingWorkflow is { IsCompletedSuccessfully: true };
 
-    private string StatusCssClass => _workflow switch
+    private bool CanRollback =>
+        _selectedTagRelease is not null &&
+        _latestRelease is not null &&
+        _selectedTagRelease.Id != _latestRelease.Id;
+    
+    private static string StatusLabel(Workflow? workflow) => workflow switch
     {
+        null => "Waiting",
+        { IsComplete: false } => "Running...",
+        { IsComplete: true, IsCompletedSuccessfully: true } => "Completed",
+        _ => "Failed"
+    };
+
+    private static string StatusCssClass(Workflow? workflow) => workflow switch
+    {
+        null => "status-waiting",
         { IsComplete: true, IsCompletedSuccessfully: true } => "status-success",
-        { IsComplete: true, IsCompletedSuccessfully: false } => "status-failure",
         { IsComplete: false } => "status-running",
-        _ => ""
+        _ => "status-failure"
     };
 
     protected override async Task OnInitializedAsync()
@@ -106,47 +176,82 @@
 
         var tag = _tags.FirstOrDefault();
         if (tag != null)
-            await SelectTag(tag);
+            _pendingWorkflow = await ApplicationService.GetWorkflow(Id, tag.CommitSha);
+    }
+
+    private void ToggleTagHistory()
+    {
+        _showTagHistory = !_showTagHistory;
     }
 
     private async Task SelectTag(Tag tag)
     {
-        if (_selectedTag == null)
-        {
-            _selectedTag = tag;
-        }
-        else
-        {
-            // click again to deselect, or swap selection
-            _selectedTag = _selectedTag.Name == tag.Name ? null : tag;    
-        }
+        _selectedTag = _selectedTag == null || _selectedTag.Name != tag.Name
+            ? tag
+            : null;
+
+        _selectedTagRelease = null;
 
         if (_selectedTag == null)
-            _workflow = null;
-        else
-            _workflow = await ApplicationService.GetWorkflow(Id, _selectedTag.CommitSha);
+        {
+            _selectedTagWorkflow = null;
+            return;
+        }
+
+        _selectedTagWorkflow = await ApplicationService.GetWorkflow(Id, _selectedTag.CommitSha);
+
+        if (_selectedTagWorkflow is { IsComplete: true, IsCompletedSuccessfully: true })
+            _selectedTagRelease = await ApplicationService.GetRelease(Id, _selectedTag.Name);
     }
 
     private async Task ReleaseAsync()
     {
-        if (!CanRelease) return;
+        if (!CanRelease || _pendingTag == null) return;
 
-        var selectedTag = _tags!.First(t => t.Name == _selectedTag.Name);
-        await ApplicationService.ReleaseAsync(Id, selectedTag);
+        _isReleasing = true;
+        try
+        {
+            await ApplicationService.ReleaseAsync(Id, _pendingTag);
 
-        _selectedTag = null;
-        _latestRelease = await ApplicationService.GetLatestRelease(Id);
+            _pendingTag = null;
+            _pendingWorkflow = null;
+            _latestRelease = await ApplicationService.GetLatestRelease(Id);
+            _tags = await ApplicationService.GetTags(Id);
+        }
+        finally
+        {
+            _isReleasing = false;
+        }
     }
 
-    private async Task CreateTagAsync()
+    private async Task RollbackAsync()
+    {
+        if (!CanRollback || _selectedTag == null) return;
+
+        _isRollingBack = true;
+        try
+        {
+            await ApplicationService.Rollback(Id, _selectedTag);
+
+            _latestRelease = await ApplicationService.GetLatestRelease(Id);
+            _selectedTagRelease = await ApplicationService.GetRelease(Id, _selectedTag.Name);
+        }
+        finally
+        {
+            _isRollingBack = false;
+        }
+    }
+
+    private async Task CreateNewReleaseAsync()
     {
         if (_isPolling) return;
 
-        var newTag = await ApplicationService.CreateTag(Id);
+        _pendingTag = await ApplicationService.CreateTag(Id);
+        _pendingWorkflow = null;
 
         _tags = await ApplicationService.GetTags(Id);
 
-        StartPolling(newTag.CommitSha);
+        StartPolling(_pendingTag.CommitSha);
     }
 
     private void StartPolling(string commitSha)
@@ -172,7 +277,7 @@
 
                 await InvokeAsync(() =>
                 {
-                    _workflow = workflow;
+                    _pendingWorkflow = workflow;
 
                     if (workflow.IsComplete)
                     {
@@ -219,14 +324,18 @@
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    .page-header {
+    .release-panel {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 24px;
+        padding: 20px;
+        margin-bottom: 20px;
+        border: 1px solid #e2e2e2;
+        border-radius: 12px;
+        background: #fff;
     }
 
-    .page-header h1 {
+    .panel-left h1 {
         font-size: 20px;
         margin: 0 0 4px 0;
         color: #1a1a1a;
@@ -245,6 +354,13 @@
         font-size: 12px;
         font-weight: 600;
         color: #4f46e5;
+    }
+
+    .panel-right {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 12px;
     }
 
     .status-area {
@@ -278,6 +394,11 @@
         color: #a16207;
     }
 
+    .status-badge.status-waiting {
+        background: #eee;
+        color: #666;
+    }
+
     .spinner {
         width: 16px;
         height: 16px;
@@ -301,11 +422,100 @@
         to { transform: rotate(360deg); }
     }
 
+    .actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.15s ease, background 0.15s ease;
+    }
+
+    .btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+    }
+
+    .btn-primary {
+        background: #4f46e5;
+        color: white;
+    }
+
+    .btn-primary:disabled {
+        background: #c7c7c7;
+    }
+
+    .btn-secondary {
+        background: #f1f1f4;
+        color: #333;
+    }
+
+    .btn-rollback {
+        background: #b91c1c;
+        color: white;
+        padding: 6px 14px;
+        font-size: 13px;
+    }
+
+    .btn-rollback:disabled {
+        background: #e2b3b3;
+    }
+
+    .btn-link {
+        background: none;
+        border: none;
+        color: #4f46e5;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 8px 0;
+    }
+
+    .tag-history {
+        border-top: 1px solid #e2e2e2;
+        padding-top: 12px;
+    }
+
+    .tag-detail {
+        margin-bottom: 16px;
+        padding: 14px 16px;
+        border: 1px solid #e2e2e2;
+        border-radius: 10px;
+        background: #fafafa;
+    }
+
+    .tag-detail-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .tag-detail-name {
+        font-weight: 600;
+        color: #1a1a1a;
+    }
+
+    .tag-detail-release {
+        font-size: 13px;
+        color: #555;
+    }
+
+    .tag-detail-hint {
+        font-size: 13px;
+        color: #8a8a8a;
+    }
+
     .tag-list {
         display: flex;
         flex-direction: column;
         gap: 8px;
-        margin-bottom: 20px;
     }
 
     .tag-item {
@@ -354,40 +564,5 @@
     .tag-check {
         color: #4f46e5;
         font-weight: bold;
-    }
-
-    .actions {
-        display: flex;
-        gap: 12px;
-    }
-
-    .btn {
-        display: inline-flex;
-        align-items: center;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: opacity 0.15s ease, background 0.15s ease;
-    }
-
-    .btn:disabled {
-        cursor: not-allowed;
-        opacity: 0.6;
-    }
-
-    .btn-primary {
-        background: #4f46e5;
-        color: white;
-    }
-
-    .btn-primary:disabled {
-        background: #c7c7c7;
-    }
-
-    .btn-secondary {
-        background: #f1f1f4;
-        color: #333;
     }
 </style>

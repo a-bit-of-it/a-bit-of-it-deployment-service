@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using System.Net;
+using System.Net.Http.Json;
 using Frontend.Models;
 
 namespace Frontend.Services;
@@ -11,6 +12,8 @@ public interface IApplicationService
     Task<Tag> CreateTag(int id, CancellationToken ct = default);
     Task<Workflow?> GetWorkflow(int id, string commitSha, CancellationToken ct = default);
     Task<Release?> GetLatestRelease(int id, CancellationToken ct = default);
+    Task<Release?> GetRelease(int id, string tagName, CancellationToken ct = default);
+    Task Rollback(int applicationId, Tag tag);
 }
 
 public class ApplicationService(HttpClient http) : IApplicationService
@@ -39,20 +42,42 @@ public class ApplicationService(HttpClient http) : IApplicationService
         await http.PostAsJsonAsync($"api/applications/{id}/deployments", body);
     }
 
-    public async Task<Release?> GetLatestRelease(int id, CancellationToken ct = default)
+    public Task<Release?> GetLatestRelease(int id, CancellationToken ct = default)
     {
-        var release = await http.GetFromJsonAsync<Release>($"api/applications/{id}/releases/latest", ct);
-        return release;
+        return GetOrDefaultAsync<Release>($"api/applications/{id}/releases/latest", ct);
+    }
+
+    public Task<Release?> GetRelease(int id, string tagName, CancellationToken ct = default)
+    {
+        return GetOrDefaultAsync<Release>($"api/applications/{id}/releases/{tagName}", ct);
+    }
+
+    private async Task<T?> GetOrDefaultAsync<T>(string requestUri, CancellationToken ct)
+    {
+        var response = await http.GetAsync(requestUri, ct);
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return default;
+
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<T>(cancellationToken: ct);
+    }
+
+    public async Task Rollback(int id, Tag tag)
+    {
+        var body = new { tag };
+        await http.PostAsJsonAsync($"api/applications/{id}/rollbacks", body);
     }
 
     public async Task<Tag> CreateTag(int id, CancellationToken ct = default)
     {
-        var haah = await http.PostAsJsonAsync($"api/applications/{id}/tags", new { }, ct);
+        var response = await http.PostAsJsonAsync($"api/applications/{id}/tags", new { }, ct);
 
-        if (haah.IsSuccessStatusCode)
-            return await haah.Content.ReadFromJsonAsync<Tag>(cancellationToken: ct) ?? throw new Exception("Could not parse response.");
+        if (response.IsSuccessStatusCode)
+            return await response.Content.ReadFromJsonAsync<Tag>(cancellationToken: ct) ?? throw new Exception("Could not parse response.");
         
-        var error = await haah.Content.ReadAsStringAsync(ct);
+        var error = await response.Content.ReadAsStringAsync(ct);
         throw new Exception("Could not create tag " + error);
     }
 }

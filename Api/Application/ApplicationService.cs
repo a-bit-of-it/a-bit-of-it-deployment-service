@@ -31,19 +31,58 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         if (workflow is { IsComplete: false, IsSuccessful: false })
             throw new Exception("Workflow is not completed successfully.");
         
-        var composeFile = await GetComposeFile(application.Repository, tag.Name);
+        await PushAndDeploy(customer, application, tag.Name);
+
+        await releaseRepository.CreateRelease(application.Repository, tag.Name);
+
+        logger.LogInformation("Deploy succeeded for {ApplicationName}", application.Name);
+    }
+
+    public async Task Rollback(int applicationId, Tag tag)
+    {
+        logger.LogInformation("Beginning rollback...");
+
+        var customer = await customerRepository.GetCustomerByApplicationId(applicationId);
+
+        if (customer == null)
+            throw new NotFoundException($"Could not find customer from application id. Id = {applicationId}.");
+
+        var application = customer.Applications.FirstOrDefault(app => app.Id == applicationId);
+
+        if (application == null)
+            throw new NotFoundException($"Could not find application. Id = {applicationId}.");
+
+        var workflow = await workflowRepository.GetWorkflow(application.Repository, tag.CommitSha);
+
+        if (workflow == null)
+            throw new NotFoundException($"Could not find workflow for tag {tag.Name}.");
+
+        if (workflow is { IsComplete: false, IsSuccessful: false })
+            throw new Exception("Workflow is not completed successfully.");
+
+        var release = await releaseRepository.GetRelease(application.Repository, tag.Name);
+
+        if (release == null)
+            throw new NotFoundException($"Could not find release for tag {tag.Name}.");
+
+        await PushAndDeploy(customer, application, tag.Name);
+
+        await releaseRepository.SetLatestRelease(application.Repository, release.Id);
+
+        logger.LogInformation("Rollback succeeded for {ApplicationName}", application.Name);
+    }
+
+    private async Task PushAndDeploy(Customer customer, Domain.Application application, string tagName)
+    {
+        var composeFile = await GetComposeFile(application.Repository, tagName);
         var customerName = customer.Name.Kebaberize();
         var remoteDeploymentPath = $"{customerName}/{application.Name.Kebaberize()}";
-        
+
         var remoteDir = await filePusher.Push(application.Server, composeFile, remoteDeploymentPath);
 
         await server.Deploy(application.Server, customerName, remoteDir);
-        
-        await releaseRepository.CreateRelease(application.Repository, tag.Name);
-        
-        logger.LogInformation("Deploy succeeded for {ApplicationName}", application.Name);
     }
-    
+
     public async Task<List<Tag>> GetTags(int id)
     {
         var application = await applicationRepository.GetApplication(id);
@@ -98,16 +137,36 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         return application;
     }
 
-    public async Task<Release?> GetLatestRelease(int id)
+    public async Task<Release> GetLatestRelease(int id)
     {
         var application = await applicationRepository.GetApplication(id);
 
         if (application is null)
             throw new NotFoundException("No application found.");
 
-        return await releaseRepository.GetLatestRelease(application.Repository);
+        var release = await releaseRepository.GetLatestRelease(application.Repository);
+        
+        if (release == null)
+            throw new NotFoundException("No latest release.");
+        
+        return  release;
     }
-    
+
+    public async Task<Release> GetRelease(int id, string tagName)
+    {
+        var application = await applicationRepository.GetApplication(id);
+
+        if (application is null)
+            throw new NotFoundException("No application found.");
+
+        var release = await releaseRepository.GetRelease(application.Repository, tagName);
+        
+        if (release == null)
+            throw new NotFoundException("Could not find release for tag {tagName}.");
+        
+        return  release;
+    }
+
     private async Task<string> GetComposeFile(string repository, string tagName)
     {
         var composeFile = await dockerComposeFileFetcher.GetComposeFileAsync(repository, tagName);
