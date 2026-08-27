@@ -1,3 +1,3 @@
 ﻿namespace Api.Domain;
 
-public record Release(long Id, string Name, string Url);
+public record Release(long Id, string Name, DateTime CreatedAt, string Url);

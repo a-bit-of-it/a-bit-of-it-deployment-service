@@ -1,3 +1,5 @@
-﻿namespace Api.Infrastructure.Github.DTOs;
+﻿using System.Text.Json.Serialization;
 
-public record GithubRelease(long Id, string Name, string HtmlUrl);
+namespace Api.Infrastructure.Github.DTOs;
+
+public record GithubRelease(long Id, string Name, [property: JsonPropertyName("created_at")] DateTime CreatedAt, string HtmlUrl);

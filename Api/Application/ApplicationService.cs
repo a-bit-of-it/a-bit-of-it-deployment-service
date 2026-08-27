@@ -91,11 +91,21 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
     public async Task<Domain.Application> Get(int id)
     {
         var application = await applicationRepository.GetApplication(id);
-        
+
         if (application is null)
             throw new NotFoundException("No application found.");
-        
+
         return application;
+    }
+
+    public async Task<Release?> GetLatestRelease(int id)
+    {
+        var application = await applicationRepository.GetApplication(id);
+
+        if (application is null)
+            throw new NotFoundException("No application found.");
+
+        return await releaseRepository.GetLatestRelease(application.Repository);
     }
     
     private async Task<string> GetComposeFile(string repository, string tagName)

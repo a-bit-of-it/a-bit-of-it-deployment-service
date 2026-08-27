@@ -51,7 +51,15 @@ public class ApplicationsController(ApplicationService applicationService) : Con
     public async Task<IActionResult> GetApplication(int id)
     {
         var application = await applicationService.Get(id);
-     
+
         return Ok(application);
+    }
+
+    [HttpGet("{id:int}/releases/latest")]
+    public async Task<IActionResult> GetLatestRelease(int id)
+    {
+        var release = await applicationService.GetLatestRelease(id);
+
+        return Ok(release);
     }
 }

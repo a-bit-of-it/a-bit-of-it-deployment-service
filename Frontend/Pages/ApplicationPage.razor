@@ -14,6 +14,10 @@
             {
                 <h3 class="app-name">@_application.Name</h3>
             }
+            @if (_latestRelease != null)
+            {
+                <span class="latest-release">Latest release: @_latestRelease.Name (@_latestRelease.CreatedAt.ToLocalTime())</span>
+            }
         </div>
 
         @if (_workflow != null)
@@ -21,10 +25,6 @@
             <div class="status-area">
                 <span class="status-badge @StatusCssClass">
                     @(_workflow.IsComplete ? "Completed" : "Running...")
-                    @* @if (!string.IsNullOrEmpty(_workflow.Conclusion)) *@
-                    @* { *@
-                    @*     <text> · @_workflow.Conclusion</text> *@
-                    @* } *@
                 </span>
                 @if (_isPolling)
                 {
@@ -32,6 +32,24 @@
                 }
             </div>
         }
+    </div>
+    
+    <div class="actions">
+        <button class="btn btn-secondary"
+                disabled="@_isPolling"
+                @onclick="CreateTagAsync">
+            @if (_isPolling)
+            {
+                <span class="spinner spinner-inline"></span>
+            }
+            Create Tag at latest commit
+        </button>
+
+        <button class="btn btn-primary"
+                disabled="@(!CanRelease)"
+                @onclick="ReleaseAsync">
+            Release
+        </button>
     </div>
 
     @if (_tags != null)
@@ -51,24 +69,6 @@
                 </div>
             }
         </div>
-
-        <div class="actions">
-            <button class="btn btn-secondary"
-                    disabled="@_isPolling"
-                    @onclick="CreateTagAsync">
-                @if (_isPolling)
-                {
-                    <span class="spinner spinner-inline"></span>
-                }
-                Create Tag at latest commit
-            </button>
-
-            <button class="btn btn-primary"
-                    disabled="@(!CanRelease)"
-                    @onclick="ReleaseAsync">
-                Release
-            </button>
-        </div>
     }
 </div>
 
@@ -80,6 +80,7 @@
     private List<Tag>? _tags;
     private Tag? _selectedTag;
     private Workflow? _workflow;
+    private Release? _latestRelease;
     private bool _isPolling;
 
     private PeriodicTimer? _pollTimer;
@@ -101,8 +102,11 @@
     {
         _application = await ApplicationService.GetAsync(Id);
         _tags = await ApplicationService.GetTags(Id);
+        _latestRelease = await ApplicationService.GetLatestRelease(Id);
 
-        _selectedTag = _tags.FirstOrDefault();
+        var tag = _tags.FirstOrDefault();
+        if (tag != null)
+            await SelectTag(tag);
     }
 
     private async Task SelectTag(Tag tag)
@@ -131,6 +135,7 @@
         await ApplicationService.ReleaseAsync(Id, selectedTag);
 
         _selectedTag = null;
+        _latestRelease = await ApplicationService.GetLatestRelease(Id);
     }
 
     private async Task CreateTagAsync()
@@ -232,6 +237,14 @@
         font-size: 15px;
         font-weight: 500;
         color: #6b6b6b;
+    }
+
+    .latest-release {
+        display: inline-block;
+        margin-top: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #4f46e5;
     }
 
     .status-area {

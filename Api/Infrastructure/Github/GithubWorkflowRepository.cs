@@ -11,7 +11,7 @@ public class GithubWorkflowRepository(HttpClient client, ILogger<GithubWorkflowR
         var workflows = await client
             .GetFromJsonAsync<GithubWorkflows>($"repos/{Config.Organization}/{repository}/actions/runs?event=push&head_sha={commitSha}");
 
-        if(workflows == null) 
+        if(workflows == null || workflows.Runs.Count == 0) 
             return null;
 
         var workflow = workflows.Runs.First();

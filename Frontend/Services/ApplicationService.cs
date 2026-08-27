@@ -10,6 +10,7 @@ public interface IApplicationService
     Task ReleaseAsync(int applicationId, Tag selectedTag);
     Task<Tag> CreateTag(int id, CancellationToken ct = default);
     Task<Workflow?> GetWorkflow(int id, string commitSha, CancellationToken ct = default);
+    Task<Release?> GetLatestRelease(int id, CancellationToken ct = default);
 }
 
 public class ApplicationService(HttpClient http) : IApplicationService
@@ -36,6 +37,12 @@ public class ApplicationService(HttpClient http) : IApplicationService
     {
         var body = new { tag };
         await http.PostAsJsonAsync($"api/applications/{id}/deployments", body);
+    }
+
+    public async Task<Release?> GetLatestRelease(int id, CancellationToken ct = default)
+    {
+        var release = await http.GetFromJsonAsync<Release>($"api/applications/{id}/releases/latest", ct);
+        return release;
     }
 
     public async Task<Tag> CreateTag(int id, CancellationToken ct = default)
