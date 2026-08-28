@@ -28,10 +28,10 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         if (workflow == null)
             throw new NotFoundException($"Could not find workflow for tag {tag.Name}.");
         
-        if (workflow is { IsComplete: false, IsSuccessful: false })
+        if (!workflow.IsComplete || !workflow.IsSuccessful)
             throw new Exception("Workflow is not completed successfully.");
         
-        await PushAndDeploy(customer, application, tag.Name);
+        await PushAndDeploy(application, customer, tag.Name);
 
         await releaseRepository.CreateRelease(application.Repository, tag.Name);
 
@@ -57,7 +57,7 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         if (workflow == null)
             throw new NotFoundException($"Could not find workflow for tag {tag.Name}.");
 
-        if (workflow is { IsComplete: false, IsSuccessful: false })
+        if (!workflow.IsComplete || !workflow.IsSuccessful)
             throw new Exception("Workflow is not completed successfully.");
 
         var release = await releaseRepository.GetRelease(application.Repository, tag.Name);
@@ -65,14 +65,14 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         if (release == null)
             throw new NotFoundException($"Could not find release for tag {tag.Name}.");
 
-        await PushAndDeploy(customer, application, tag.Name);
+        await PushAndDeploy(application, customer, tag.Name);
 
         await releaseRepository.SetLatestRelease(application.Repository, release.Id);
 
         logger.LogInformation("Rollback succeeded for {ApplicationName}", application.Name);
     }
 
-    private async Task PushAndDeploy(Customer customer, Domain.Application application, string tagName)
+    private async Task PushAndDeploy(Domain.Application application, Customer customer, string tagName)
     {
         var composeFile = await GetComposeFile(application.Repository, tagName);
         var customerName = customer.Name.Kebaberize();
