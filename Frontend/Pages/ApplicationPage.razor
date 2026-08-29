@@ -1,29 +1,34 @@
-@page "/applications/{Id:int}"
+@page "/customers/{CustomerId:int}/applications/{ApplicationId:int}"
 @using Frontend.Models
 @using Frontend.Services
 @implements IAsyncDisposable
 @inject IApplicationService ApplicationService
+@inject ICustomerService CustomerService
 
 <PageTitle>Application</PageTitle>
 
-<div class="page">
+<div class="app-page">
     <div class="release-panel">
         <div class="panel-left">
-            <h1>Manage Application releases</h1>
-            @if (_application != null)
+            <h1>Manage Application</h1>
+            @if (_application != null && _customer != null)
             {
-                <h3 class="app-name">@_application.Name</h3>
+                <nav class="breadcrumb" aria-label="breadcrumb">
+                    <a href="customers/@_customer.Id">@_customer.Name</a>
+                    <span class="breadcrumb-current">@_application.Name</span>
+                </nav>
             }
             @if (_latestRelease != null)
             {
-                <span class="latest-release">Latest release: @_latestRelease.Name (@_latestRelease.CreatedAt.ToLocalTime())</span>
+                <span class="latest-release">Latest release: @_latestRelease.Name (@_latestRelease.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm"))</span>
             }
         </div>
 
         <div class="panel-right">
             <div class="status-area">
-                <span class="status-badge @StatusCssClass(_pendingWorkflow)">
-                    @StatusLabel(_pendingWorkflow)
+                Workflow:
+                <span class="status-badge @StatusCssClass(_selectedTagWorkflow)">
+                    @StatusLabel(_selectedTagWorkflow)
                 </span>
                 @if (_isPolling)
                 {
@@ -32,16 +37,6 @@
             </div>
 
             <div class="actions">
-                <button class="btn btn-secondary"
-                        disabled="@_isPolling"
-                        @onclick="CreateNewReleaseAsync">
-                    @if (_isPolling)
-                    {
-                        <span class="spinner spinner-inline"></span>
-                    }
-                    Create new release
-                </button>
-
                 <button class="btn btn-primary"
                         disabled="@(!CanRelease || _isReleasing)"
                         @onclick="ReleaseAsync">
@@ -55,102 +50,60 @@
         </div>
     </div>
 
-    <div class="tag-history">
-        <button class="btn btn-link tag-history-toggle" @onclick="ToggleTagHistory">
-            @(_showTagHistory ? "Hide tags" : "View tags")
-        </button>
-
-        @if (_showTagHistory)
+    <hr class="divider" />
+    
+    <div class="tag-list">
+        @foreach (var tag in _tags)
         {
-            <div class="tag-detail">
-                @if (_selectedTag == null)
-                {
-                    <span class="tag-detail-hint">Select a tag below to inspect its workflow and release.</span>
-                }
-                else
-                {
-                    <div class="tag-detail-row">
-                        <span class="tag-detail-name">@_selectedTag.Name</span>
-                        <span class="status-badge @StatusCssClass(_selectedTagWorkflow)">
-                            @StatusLabel(_selectedTagWorkflow)
-                        </span>
-
-                        @if (_selectedTagRelease != null)
-                        {
-                            <span class="tag-detail-release">Release: @_selectedTagRelease.Name (@_selectedTagRelease.CreatedAt.ToLocalTime())</span>
-
-                            <button class="btn btn-primary"
-                                    disabled="@(!CanRollback || _isRollingBack)"
-                                    @onclick="RollbackAsync">
-                                @if (_isRollingBack)
-                                {
-                                    <span class="spinner spinner-inline"></span>
-                                }
-                                Rollback
-                            </button>
-                        }
-                        else if (_selectedTagWorkflow is { IsComplete: true, IsCompletedSuccessfully: true })
-                        {
-                            <span class="tag-detail-hint">No release found for this tag.</span>
-                        }
-                    </div>
-                }
+            <div class="tag-item @(tag.Name == _selectedTag?.Name ? "selected" : "")"
+                 @onclick="() => SelectTag(tag)">
+                <span class="tag-dot"></span>
+                <span class="tag-name">@tag.Name</span>
             </div>
-
-            @if (_tags != null)
-            {
-                <div class="tag-list">
-                    @foreach (var tag in _tags)
-                    {
-                        <div class="tag-item @(tag.Name == _selectedTag?.Name ? "selected" : "")"
-                             @onclick="() => SelectTag(tag)">
-                            <span class="tag-dot"></span>
-                            <span class="tag-name">@tag.Name</span>
-                            <span class="tag-sha">@tag.CommitSha</span>
-                            @if (_selectedTag != null && tag.Name == _selectedTag.Name)
-                            {
-                                <span class="tag-check">✓</span>
-                            }
-                        </div>
-                    }
-                </div>
-            }
         }
+    </div>
+
+    <hr class="divider" />
+    
+    <div class="new-release-row">
+        <button class="btn btn-secondary"
+                disabled="@_isPolling"
+                @onclick="CreateNewReleaseAsync">
+            @if (_isPolling)
+            {
+                <span class="spinner spinner-inline"></span>
+            }
+            Create new release
+        </button>
     </div>
 </div>
 
 @code {
     [Parameter]
-    public int Id { get; set; }
+    public int CustomerId { get; set; } 
+    
+    [Parameter]
+    public int ApplicationId { get; set; }
 
     private Application? _application;
-    private List<Tag>? _tags;
+    private Customer? _customer;
+    
+    private List<Tag> _tags = new();
     private Release? _latestRelease;
 
-    // "Create new release" flow (top panel)
-    private Tag? _pendingTag;
-    private Workflow? _pendingWorkflow;
     private bool _isPolling;
     private bool _isReleasing;
 
-    // Tag history flow (bottom panel)
-    private bool _showTagHistory;
     private Tag? _selectedTag;
     private Workflow? _selectedTagWorkflow;
-    private Release? _selectedTagRelease;
-    private bool _isRollingBack;
 
     private PeriodicTimer? _pollTimer;
     private CancellationTokenSource? _pollCts;
 
     private bool CanRelease =>
-        _pendingTag is not null &&
-        _pendingWorkflow is { IsCompletedSuccessfully: true };
-
-    private bool CanRollback =>
-        _selectedTagRelease is not null &&
-        _latestRelease is not null &&
-        _selectedTagRelease.Id != _latestRelease.Id;
+        _selectedTag != null
+        && _selectedTagWorkflow is { IsCompletedSuccessfully: true }
+        && (_latestRelease == null || _selectedTag.Name != _latestRelease.Name);
     
     private static string StatusLabel(Workflow? workflow) => workflow switch
     {
@@ -170,18 +123,24 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _application = await ApplicationService.GetAsync(Id);
-        _tags = await ApplicationService.GetTags(Id);
-        _latestRelease = await ApplicationService.GetLatestRelease(Id);
+        _application = await ApplicationService.GetAsync(ApplicationId);
+        _customer = await CustomerService.GetAsync(CustomerId);
+        _tags = await ApplicationService.GetTags(ApplicationId);
+        _latestRelease = await ApplicationService.GetLatestRelease(ApplicationId);
 
-        var tag = _tags.FirstOrDefault();
+        Tag? tag;
+        if (_latestRelease == null)
+            tag = _tags.FirstOrDefault();
+        else
+            tag = _tags.FirstOrDefault(t => t.Name == _latestRelease.Name);
+
         if (tag != null)
-            _pendingWorkflow = await ApplicationService.GetWorkflow(Id, tag.CommitSha);
-    }
-
-    private void ToggleTagHistory()
-    {
-        _showTagHistory = !_showTagHistory;
+        {
+            _selectedTagWorkflow = await ApplicationService.GetWorkflow(ApplicationId, tag.Name);
+            _selectedTag = tag;
+        }
+        
+        StateHasChanged();
     }
 
     private async Task SelectTag(Tag tag)
@@ -189,34 +148,29 @@
         _selectedTag = _selectedTag == null || _selectedTag.Name != tag.Name
             ? tag
             : null;
-
-        _selectedTagRelease = null;
-
+        
         if (_selectedTag == null)
         {
             _selectedTagWorkflow = null;
             return;
         }
 
-        _selectedTagWorkflow = await ApplicationService.GetWorkflow(Id, _selectedTag.CommitSha);
-
-        if (_selectedTagWorkflow is { IsComplete: true, IsCompletedSuccessfully: true })
-            _selectedTagRelease = await ApplicationService.GetRelease(Id, _selectedTag.Name);
+        _selectedTagWorkflow = await ApplicationService.GetWorkflow(ApplicationId, _selectedTag.Name);
     }
 
     private async Task ReleaseAsync()
     {
-        if (!CanRelease || _pendingTag == null) return;
+        if (!CanRelease || _selectedTag == null) return;
 
         _isReleasing = true;
         try
         {
-            await ApplicationService.ReleaseAsync(Id, _pendingTag);
+            await ApplicationService.ReleaseAsync(ApplicationId, _selectedTag);
 
-            _pendingTag = null;
-            _pendingWorkflow = null;
-            _latestRelease = await ApplicationService.GetLatestRelease(Id);
-            _tags = await ApplicationService.GetTags(Id);
+            _selectedTag = null;
+            _selectedTagWorkflow = null;
+            _latestRelease = await ApplicationService.GetLatestRelease(ApplicationId);
+            _tags = await ApplicationService.GetTags(ApplicationId);
         }
         finally
         {
@@ -224,37 +178,23 @@
         }
     }
 
-    private async Task RollbackAsync()
-    {
-        if (!CanRollback || _selectedTag == null) return;
-
-        _isRollingBack = true;
-        try
-        {
-            await ApplicationService.Rollback(Id, _selectedTag);
-
-            _latestRelease = await ApplicationService.GetLatestRelease(Id);
-            _selectedTagRelease = await ApplicationService.GetRelease(Id, _selectedTag.Name);
-        }
-        finally
-        {
-            _isRollingBack = false;
-        }
-    }
-
     private async Task CreateNewReleaseAsync()
     {
         if (_isPolling) return;
 
-        _pendingTag = await ApplicationService.CreateTag(Id);
-        _pendingWorkflow = null;
+        _selectedTag = await ApplicationService.CreateTag(ApplicationId);
+        if (_selectedTag == null)
+        {
+            Console.WriteLine("Creating tag failed cannot poll.");
+            return;
+        }
 
-        _tags = await ApplicationService.GetTags(Id);
+        _tags = await ApplicationService.GetTags(ApplicationId);
 
-        StartPolling(_pendingTag.CommitSha);
+        StartPolling(_selectedTag);
     }
 
-    private void StartPolling(string commitSha)
+    private void StartPolling(Tag tag)
     {
         // stop any previous poll loop before starting a new one
         StopPolling();
@@ -262,10 +202,10 @@
         _pollCts = new CancellationTokenSource();
         _isPolling = true;
 
-        _ = PollWorkflowAsync(commitSha, _pollCts.Token);
+        _ = PollWorkflowAsync(tag, _pollCts.Token);
     }
 
-    private async Task PollWorkflowAsync(string commitSha, CancellationToken token)
+    private async Task PollWorkflowAsync(Tag tag, CancellationToken token)
     {
         _pollTimer = new PeriodicTimer(TimeSpan.FromSeconds(10));
 
@@ -273,13 +213,13 @@
         {
             while (await _pollTimer.WaitForNextTickAsync(token))
             {
-                var workflow = await ApplicationService.GetWorkflow(Id, commitSha, token);
+                var workflow = await ApplicationService.GetWorkflow(ApplicationId, tag.Name, token);
 
                 await InvokeAsync(() =>
                 {
-                    _pendingWorkflow = workflow;
+                    _selectedTagWorkflow = workflow;
 
-                    if (workflow.IsComplete)
+                    if (workflow != null && workflow.IsComplete)
                     {
                         _isPolling = false;
                     }
@@ -287,7 +227,7 @@
                     StateHasChanged();
                 });
 
-                if (workflow.IsComplete)
+                if (workflow != null && workflow.IsComplete)
                     break;
             }
         }
@@ -317,43 +257,58 @@
 }
 
 <style>
-    .page {
-        max-width: 720px;
-        margin: 0 auto;
-        padding: 24px;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    .app-page {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        /*padding: 24px;*/
     }
 
     .release-panel {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        padding: 20px;
-        margin-bottom: 20px;
-        border: 1px solid #e2e2e2;
-        border-radius: 12px;
-        background: #fff;
     }
 
-    .panel-left h1 {
-        font-size: 20px;
-        margin: 0 0 4px 0;
-        color: #1a1a1a;
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 18px;
+    }
+
+    .breadcrumb a {
+        text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+
+    .breadcrumb-current {
+    }
+
+    .breadcrumb > * + *::before {
+        content: "/";
+        margin-right: 8px;
+    }
+
+    .divider {
+        width: 100%;
+        border: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.75);
+        margin: 0;
     }
 
     .app-name {
-        margin: 0;
         font-size: 15px;
         font-weight: 500;
-        color: #6b6b6b;
     }
 
     .latest-release {
         display: inline-block;
-        margin-top: 6px;
         font-size: 12px;
         font-weight: 600;
-        color: #4f46e5;
     }
 
     .panel-right {
@@ -477,48 +432,21 @@
         padding: 8px 0;
     }
 
-    .tag-history {
-        border-top: 1px solid #e2e2e2;
-        padding-top: 12px;
-    }
-
-    .tag-detail {
-        margin-bottom: 16px;
-        padding: 14px 16px;
-        border: 1px solid #e2e2e2;
-        border-radius: 10px;
-        background: #fafafa;
-    }
-
-    .tag-detail-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-
-    .tag-detail-name {
-        font-weight: 600;
-        color: #1a1a1a;
-    }
-
-    .tag-detail-release {
-        font-size: 13px;
-        color: #555;
-    }
-
-    .tag-detail-hint {
-        font-size: 13px;
-        color: #8a8a8a;
-    }
-
     .tag-list {
         display: flex;
         flex-direction: column;
         gap: 8px;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .new-release-row {
+        display: flex;
+        justify-content: flex-end;
     }
 
     .tag-item {
+        width: 200px;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -527,17 +455,15 @@
         border-radius: 10px;
         cursor: pointer;
         transition: all 0.15s ease;
-        background: #fff;
     }
 
     .tag-item:hover {
-        border-color: #b3b3b3;
-        background: #fafafa;
+        background:  #5c636a;
+        color: white;
     }
 
     .tag-item.selected {
-        border-color: #4f46e5;
-        background: #eef2ff;
+        background: #0d6efd;
     }
 
     .tag-dot {
@@ -550,19 +476,7 @@
 
     .tag-name {
         font-weight: 600;
-        color: #1a1a1a;
+        color: white;
     }
-
-    .tag-sha {
-        flex: 1;
-        font-family: "SF Mono", Consolas, monospace;
-        font-size: 13px;
-        color: #8a8a8a;
-        text-align: right;
-    }
-
-    .tag-check {
-        color: #4f46e5;
-        font-weight: bold;
-    }
+    
 </style>

@@ -23,22 +23,17 @@ public class InMemoryRepository : ICustomerRepository, IApplicationRepository
             new List<Domain.Application>(){website, deploymentService});
         
         
-        
-        
         var firstCustomerApplication = new Domain.Application(3, "Website", "gastronomia-napolitana-website", "https://github.com/a-bit-of-it/gastronomia-napolitana", server);
         
         var firstCustomer = new Customer(1, "Gastronomia Napolitana", "John F. Kennedys Pl. 2", "Denmark", "Aalborg",
             "98122911", new List<Domain.Application>(){firstCustomerApplication});
 
+
+        var secondCustomerApplication = new Domain.Application(4, "Website", "koreskole-website",
+            "https://github.com/a-bit-of-it/koreskole-website", server);
         
-        
-        
-        
-        
-        
-        // Would a dream this is, huh?
-        var secondCustomer = new Customer(2, "LEGO", "hihi plads", "haha country", "haha city", "hehe phonenumber",
-            new List<Domain.Application>());
+        var secondCustomer = new Customer(2, "Koreskole", "Koreskoke.dk", "Denmark", "Dunno", "Also dunno",
+            new List<Domain.Application>(){secondCustomerApplication});
 
         _users = new List<Customer>() { iAmACustomerMyselfHehe, firstCustomer, secondCustomer };
     }

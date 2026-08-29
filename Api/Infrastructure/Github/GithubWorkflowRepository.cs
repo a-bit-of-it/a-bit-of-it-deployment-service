@@ -6,10 +6,10 @@ namespace Api.Infrastructure.Github;
 
 public class GithubWorkflowRepository(HttpClient client, ILogger<GithubWorkflowRepository> logger) : IWorkflowRepository
 {
-    public async Task<Workflow?> GetWorkflow(string repository, string commitSha)
+    public async Task<Workflow?> GetWorkflow(string repository, Tag tag)
     {
         var workflows = await client
-            .GetFromJsonAsync<GithubWorkflows>($"repos/{Config.Organization}/{repository}/actions/runs?event=push&head_sha={commitSha}");
+            .GetFromJsonAsync<GithubWorkflows>($"repos/{Config.Organization}/{repository}/actions/runs?event=push&branch={tag.Name}");
 
         if(workflows == null || workflows.Runs.Count == 0) 
             return null;
