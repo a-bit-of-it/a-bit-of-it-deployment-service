@@ -32,32 +32,25 @@ else
 
             @if (customer.Applications.Any())
             {
-                <button class="btn btn-sm btn-outline-secondary" @onclick="() => ToggleExpanded(customer.Id)">
-                    @(IsExpanded(customer.Id) ? "▼" : "▶") Applications (@customer.Applications.Count)
-                </button>
-
-                @if (IsExpanded(customer.Id))
-                {
-                    <table class="table">
-                        <thead>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Application</th>
+                            <th>URL</th>
+                            <th>Server IP</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var app in customer.Applications)
+                        {
                             <tr>
-                                <th>Application</th>
-                                <th>URL</th>
-                                <th>Server IP</th>
+                                <td><a href="customers/@customer.Id/applications/@app.Id">@app.Name</a></td>
+                                <td><a href="@app.Url" target="_blank">@app.Url</a></td>
+                                <td>@app.Server.Ip</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var app in customer.Applications)
-                            {
-                                <tr>
-                                    <td><a href="applications/@app.Id">@app.Name</a></td>
-                                    <td><a href="@app.Url" target="_blank">@app.Url</a></td>
-                                    <td>@app.Server.Ip</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                }
+                        }
+                    </tbody>
+                </table>
             }
             else
             {
@@ -69,21 +62,10 @@ else
 
 @code {
     private List<Models.Customer>? _customers;
-    private readonly HashSet<int> _expandedCustomerIds = new();
 
     protected override async Task OnInitializedAsync()
     {
         _customers = await CustomerService.GetAllAsync();
-    }
-
-    private bool IsExpanded(int customerId) => _expandedCustomerIds.Contains(customerId);
-
-    private void ToggleExpanded(int customerId)
-    {
-        if (!_expandedCustomerIds.Remove(customerId))
-        {
-            _expandedCustomerIds.Add(customerId);
-        }
     }
 }
 
@@ -94,10 +76,19 @@ else
         border: 1px solid #dee2e6;
         border-radius: 0.5rem;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        width: 1000px;
     }
 
     .customer-card h3 {
         margin-top: 0;
         margin-bottom: 0.5rem;
+    }
+
+    .table {
+        /*Overwrite bootstrap default colors*/
+        --bs-table-bg: transparent;
+        --bs-table-color: white;
+        --bs-table-border-color: rgba(255, 255, 255, 0.15);
+        width: auto;
     }
 </style>

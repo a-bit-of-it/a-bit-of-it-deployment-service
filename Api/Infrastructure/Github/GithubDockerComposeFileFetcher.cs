@@ -18,7 +18,6 @@ public class GithubDockerComposeFileFetcher(HttpClient client)
             throw new FileNotFoundException($"'{FileName}' not found in '{repository}' at ref '{tag}'");
 
         response.EnsureSuccessStatusCode();
-        var haha = await response.Content.ReadAsStringAsync();
         var content = await response.Content.ReadFromJsonAsync<GithubFile>();
 
         if (content is null || content.Encoding != "base64")

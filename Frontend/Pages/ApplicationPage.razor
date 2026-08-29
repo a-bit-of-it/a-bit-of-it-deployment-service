@@ -1,18 +1,22 @@
-@page "/applications/{Id:int}"
+@page "/customers/{CustomerId:int}/applications/{ApplicationId:int}"
 @using Frontend.Models
 @using Frontend.Services
 @implements IAsyncDisposable
 @inject IApplicationService ApplicationService
+@inject ICustomerService CustomerService
 
 <PageTitle>Application</PageTitle>
 
 <div class="app-page">
     <div class="release-panel">
         <div class="panel-left">
-            <h1>Manage Application releases</h1>
-            @if (_application != null)
+            <h1>Manage Application</h1>
+            @if (_application != null && _customer != null)
             {
-                <h3 class="app-name">@_application.Name</h3>
+                <nav class="breadcrumb" aria-label="breadcrumb">
+                    <a href="customers/@_customer.Id">@_customer.Name</a>
+                    <span class="breadcrumb-current">@_application.Name</span>
+                </nav>
             }
             @if (_latestRelease != null)
             {
@@ -22,6 +26,7 @@
 
         <div class="panel-right">
             <div class="status-area">
+                Workflow:
                 <span class="status-badge @StatusCssClass(_selectedTagWorkflow)">
                     @StatusLabel(_selectedTagWorkflow)
                 </span>
@@ -75,9 +80,14 @@
 
 @code {
     [Parameter]
-    public int Id { get; set; }
+    public int CustomerId { get; set; } 
+    
+    [Parameter]
+    public int ApplicationId { get; set; }
 
     private Application? _application;
+    private Customer? _customer;
+    
     private List<Tag> _tags = new();
     private Release? _latestRelease;
 
@@ -91,7 +101,9 @@
     private CancellationTokenSource? _pollCts;
 
     private bool CanRelease =>
-        _selectedTagWorkflow is { IsCompletedSuccessfully: true };
+        _selectedTag != null
+        && _selectedTagWorkflow is { IsCompletedSuccessfully: true }
+        && (_latestRelease == null || _selectedTag.Name != _latestRelease.Name);
     
     private static string StatusLabel(Workflow? workflow) => workflow switch
     {
@@ -111,9 +123,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _application = await ApplicationService.GetAsync(Id);
-        _tags = await ApplicationService.GetTags(Id);
-        _latestRelease = await ApplicationService.GetLatestRelease(Id);
+        _application = await ApplicationService.GetAsync(ApplicationId);
+        _customer = await CustomerService.GetAsync(CustomerId);
+        _tags = await ApplicationService.GetTags(ApplicationId);
+        _latestRelease = await ApplicationService.GetLatestRelease(ApplicationId);
 
         Tag? tag;
         if (_latestRelease == null)
@@ -123,7 +136,7 @@
 
         if (tag != null)
         {
-            _selectedTagWorkflow = await ApplicationService.GetWorkflow(Id, tag.Name);
+            _selectedTagWorkflow = await ApplicationService.GetWorkflow(ApplicationId, tag.Name);
             _selectedTag = tag;
         }
         
@@ -142,7 +155,7 @@
             return;
         }
 
-        _selectedTagWorkflow = await ApplicationService.GetWorkflow(Id, _selectedTag.Name);
+        _selectedTagWorkflow = await ApplicationService.GetWorkflow(ApplicationId, _selectedTag.Name);
     }
 
     private async Task ReleaseAsync()
@@ -152,12 +165,12 @@
         _isReleasing = true;
         try
         {
-            await ApplicationService.ReleaseAsync(Id, _selectedTag);
+            await ApplicationService.ReleaseAsync(ApplicationId, _selectedTag);
 
             _selectedTag = null;
             _selectedTagWorkflow = null;
-            _latestRelease = await ApplicationService.GetLatestRelease(Id);
-            _tags = await ApplicationService.GetTags(Id);
+            _latestRelease = await ApplicationService.GetLatestRelease(ApplicationId);
+            _tags = await ApplicationService.GetTags(ApplicationId);
         }
         finally
         {
@@ -169,14 +182,14 @@
     {
         if (_isPolling) return;
 
-        _selectedTag = await ApplicationService.CreateTag(Id);
+        _selectedTag = await ApplicationService.CreateTag(ApplicationId);
         if (_selectedTag == null)
         {
             Console.WriteLine("Creating tag failed cannot poll.");
             return;
         }
 
-        _tags = await ApplicationService.GetTags(Id);
+        _tags = await ApplicationService.GetTags(ApplicationId);
 
         StartPolling(_selectedTag);
     }
@@ -200,7 +213,7 @@
         {
             while (await _pollTimer.WaitForNextTickAsync(token))
             {
-                var workflow = await ApplicationService.GetWorkflow(Id, tag.Name, token);
+                var workflow = await ApplicationService.GetWorkflow(ApplicationId, tag.Name, token);
 
                 await InvokeAsync(() =>
                 {
@@ -255,6 +268,29 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
+    }
+
+    .breadcrumb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 18px;
+    }
+
+    .breadcrumb a {
+        text-decoration: none;
+    }
+
+    .breadcrumb a:hover {
+        text-decoration: underline;
+    }
+
+    .breadcrumb-current {
+    }
+
+    .breadcrumb > * + *::before {
+        content: "/";
+        margin-right: 8px;
     }
 
     .divider {
