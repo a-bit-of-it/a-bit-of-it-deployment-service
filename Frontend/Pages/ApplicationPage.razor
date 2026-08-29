@@ -22,8 +22,8 @@
 
         <div class="panel-right">
             <div class="status-area">
-                <span class="status-badge @StatusCssClass(_pendingWorkflow)">
-                    @StatusLabel(_pendingWorkflow)
+                <span class="status-badge @StatusCssClass(_selectedTagWorkflow)">
+                    @StatusLabel(_selectedTagWorkflow)
                 </span>
                 @if (_isPolling)
                 {
@@ -75,24 +75,24 @@
                             @StatusLabel(_selectedTagWorkflow)
                         </span>
 
-                        @if (_selectedTagRelease != null)
-                        {
-                            <span class="tag-detail-release">Release: @_selectedTagRelease.Name (@_selectedTagRelease.CreatedAt.ToLocalTime())</span>
+                        @* @if (_selectedTagRelease != null) *@
+                        @* { *@
+                            @* <span class="tag-detail-release">Release: @_selectedTagRelease.Name (@_selectedTagRelease.CreatedAt.ToLocalTime())</span> *@
 
                             <button class="btn btn-primary"
-                                    disabled="@(!CanRollback || _isRollingBack)"
+                                    disabled="@(!CanRelease || _isReleasing)"
                                     @onclick="RollbackAsync">
-                                @if (_isRollingBack)
+                                @if (_isReleasing)
                                 {
                                     <span class="spinner spinner-inline"></span>
                                 }
                                 Rollback
                             </button>
-                        }
-                        else if (_selectedTagWorkflow is { IsComplete: true, IsCompletedSuccessfully: true })
-                        {
-                            <span class="tag-detail-hint">No release found for this tag.</span>
-                        }
+                        @* } *@
+                        @* else if (_selectedTagWorkflow is { IsComplete: true, IsCompletedSuccessfully: true }) *@
+                        @* { *@
+                        @*     <span class="tag-detail-hint">No release found for this tag.</span> *@
+                        @* } *@
                     </div>
                 }
             </div>
@@ -106,7 +106,7 @@
                              @onclick="() => SelectTag(tag)">
                             <span class="tag-dot"></span>
                             <span class="tag-name">@tag.Name</span>
-                            <span class="tag-sha">@tag.CommitSha</span>
+                            @* <span class="tag-sha">@tag.CommitSha</span> *@
                             @if (_selectedTag != null && tag.Name == _selectedTag.Name)
                             {
                                 <span class="tag-check">✓</span>
@@ -127,30 +127,18 @@
     private List<Tag>? _tags;
     private Release? _latestRelease;
 
-    // "Create new release" flow (top panel)
-    private Tag? _pendingTag;
-    private Workflow? _pendingWorkflow;
     private bool _isPolling;
     private bool _isReleasing;
 
-    // Tag history flow (bottom panel)
     private bool _showTagHistory;
     private Tag? _selectedTag;
     private Workflow? _selectedTagWorkflow;
-    private Release? _selectedTagRelease;
-    private bool _isRollingBack;
 
     private PeriodicTimer? _pollTimer;
     private CancellationTokenSource? _pollCts;
 
     private bool CanRelease =>
-        _pendingTag is not null &&
-        _pendingWorkflow is { IsCompletedSuccessfully: true };
-
-    private bool CanRollback =>
-        _selectedTagRelease is not null &&
-        _latestRelease is not null &&
-        _selectedTagRelease.Id != _latestRelease.Id;
+        _selectedTagWorkflow is { IsCompletedSuccessfully: true };
     
     private static string StatusLabel(Workflow? workflow) => workflow switch
     {
@@ -176,7 +164,7 @@
 
         var tag = _tags.FirstOrDefault();
         if (tag != null)
-            _pendingWorkflow = await ApplicationService.GetWorkflow(Id, tag.CommitSha);
+            _selectedTagWorkflow = await ApplicationService.GetWorkflow(Id, tag.Name);
     }
 
     private void ToggleTagHistory()
@@ -189,32 +177,27 @@
         _selectedTag = _selectedTag == null || _selectedTag.Name != tag.Name
             ? tag
             : null;
-
-        _selectedTagRelease = null;
-
+        
         if (_selectedTag == null)
         {
             _selectedTagWorkflow = null;
             return;
         }
 
-        _selectedTagWorkflow = await ApplicationService.GetWorkflow(Id, _selectedTag.CommitSha);
-
-        if (_selectedTagWorkflow is { IsComplete: true, IsCompletedSuccessfully: true })
-            _selectedTagRelease = await ApplicationService.GetRelease(Id, _selectedTag.Name);
+        _selectedTagWorkflow = await ApplicationService.GetWorkflow(Id, _selectedTag.Name);
     }
 
     private async Task ReleaseAsync()
     {
-        if (!CanRelease || _pendingTag == null) return;
+        if (!CanRelease || _selectedTag == null) return;
 
         _isReleasing = true;
         try
         {
-            await ApplicationService.ReleaseAsync(Id, _pendingTag);
+            await ApplicationService.ReleaseAsync(Id, _selectedTag);
 
-            _pendingTag = null;
-            _pendingWorkflow = null;
+            _selectedTag = null;
+            _selectedTagWorkflow = null;
             _latestRelease = await ApplicationService.GetLatestRelease(Id);
             _tags = await ApplicationService.GetTags(Id);
         }
@@ -226,35 +209,26 @@
 
     private async Task RollbackAsync()
     {
-        if (!CanRollback || _selectedTag == null) return;
-
-        _isRollingBack = true;
-        try
-        {
-            await ApplicationService.Rollback(Id, _selectedTag);
-
-            _latestRelease = await ApplicationService.GetLatestRelease(Id);
-            _selectedTagRelease = await ApplicationService.GetRelease(Id, _selectedTag.Name);
-        }
-        finally
-        {
-            _isRollingBack = false;
-        }
+        await ReleaseAsync();
     }
 
     private async Task CreateNewReleaseAsync()
     {
         if (_isPolling) return;
 
-        _pendingTag = await ApplicationService.CreateTag(Id);
-        _pendingWorkflow = null;
+        _selectedTag = await ApplicationService.CreateTag(Id);
+        if (_selectedTag == null)
+        {
+            Console.WriteLine("Creating tag failed cannot poll.");
+            return;
+        }
 
         _tags = await ApplicationService.GetTags(Id);
 
-        StartPolling(_pendingTag.CommitSha);
+        StartPolling(_selectedTag);
     }
 
-    private void StartPolling(string commitSha)
+    private void StartPolling(Tag tag)
     {
         // stop any previous poll loop before starting a new one
         StopPolling();
@@ -262,10 +236,10 @@
         _pollCts = new CancellationTokenSource();
         _isPolling = true;
 
-        _ = PollWorkflowAsync(commitSha, _pollCts.Token);
+        _ = PollWorkflowAsync(tag, _pollCts.Token);
     }
 
-    private async Task PollWorkflowAsync(string commitSha, CancellationToken token)
+    private async Task PollWorkflowAsync(Tag tag, CancellationToken token)
     {
         _pollTimer = new PeriodicTimer(TimeSpan.FromSeconds(10));
 
@@ -273,13 +247,13 @@
         {
             while (await _pollTimer.WaitForNextTickAsync(token))
             {
-                var workflow = await ApplicationService.GetWorkflow(Id, commitSha, token);
+                var workflow = await ApplicationService.GetWorkflow(Id, tag.Name, token);
 
                 await InvokeAsync(() =>
                 {
-                    _pendingWorkflow = workflow;
+                    _selectedTagWorkflow = workflow;
 
-                    if (workflow.IsComplete)
+                    if (workflow != null && workflow.IsComplete)
                     {
                         _isPolling = false;
                     }
@@ -287,7 +261,7 @@
                     StateHasChanged();
                 });
 
-                if (workflow.IsComplete)
+                if (workflow != null && workflow.IsComplete)
                     break;
             }
         }

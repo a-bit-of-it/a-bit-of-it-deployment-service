@@ -23,7 +23,7 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         if (application == null)
             throw new NotFoundException($"Could not find application. Id = {applicationId}.");
         
-        var workflow = await workflowRepository.GetWorkflow(application.Repository, tag.CommitSha);
+        var workflow = await workflowRepository.GetWorkflow(application.Repository, tag);
         
         if (workflow == null)
             throw new NotFoundException($"Could not find workflow for tag {tag.Name}.");
@@ -52,7 +52,7 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         if (application == null)
             throw new NotFoundException($"Could not find application. Id = {applicationId}.");
 
-        var workflow = await workflowRepository.GetWorkflow(application.Repository, tag.CommitSha);
+        var workflow = await workflowRepository.GetWorkflow(application.Repository, tag);
 
         if (workflow == null)
             throw new NotFoundException($"Could not find workflow for tag {tag.Name}.");
@@ -62,12 +62,12 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
 
         var release = await releaseRepository.GetRelease(application.Repository, tag.Name);
 
-        if (release == null)
-            throw new NotFoundException($"Could not find release for tag {tag.Name}.");
-
         await PushAndDeploy(application, customer, tag.Name);
 
-        await releaseRepository.SetLatestRelease(application.Repository, release.Id);
+        if (release == null)
+            await releaseRepository.CreateRelease(application.Repository, tag.Name);
+        else
+            await releaseRepository.SetLatestRelease(application.Repository, release.Id);
 
         logger.LogInformation("Rollback succeeded for {ApplicationName}", application.Name);
     }
@@ -76,11 +76,12 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
     {
         var composeFile = await GetComposeFile(application.Repository, tagName);
         var customerName = customer.Name.Kebaberize();
+        var containerNamePrefix =  $"{customerName}-{application.Name.Kebaberize()}";
         var remoteDeploymentPath = $"{customerName}/{application.Name.Kebaberize()}";
 
         var remoteDir = await filePusher.Push(application.Server, composeFile, remoteDeploymentPath);
 
-        await server.Deploy(application.Server, customerName, remoteDir);
+        await server.Deploy(application.Server, containerNamePrefix, remoteDir);
     }
 
     public async Task<List<Tag>> GetTags(int id)
@@ -107,17 +108,17 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         return tag;
     }
     
-    public async Task<Workflow> GetWorkflow(int id, string commitSha)
+    public async Task<Workflow> GetWorkflow(int id, Tag tag)
     {
         var application = await applicationRepository.GetApplication(id);
         
         if (application is null)
             throw new NotFoundException("No application found.");
         
-        var workflow = await workflowRepository.GetWorkflow(application.Repository, commitSha);
+        var workflow = await workflowRepository.GetWorkflow(application.Repository, tag);
         
         if  (workflow == null)
-            throw new NotFoundException($"Workflow for tag {commitSha} not found.");
+            throw new NotFoundException($"Workflow for tag {tag} not found.");
         
         return workflow;
     }
@@ -149,7 +150,7 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         if (release == null)
             throw new NotFoundException("No latest release.");
         
-        return  release;
+        return release;
     }
 
     public async Task<Release> GetRelease(int id, string tagName)
@@ -186,7 +187,7 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
             .ToList();
 
         if (expectedComponents.Count == 0)
-            throw new InvalidOperationException($"No image placeholders found in compose file for '{repository}'.");
+            return composeYaml;
 
         var imageRefs = expectedComponents.ToDictionary(
             component => component,

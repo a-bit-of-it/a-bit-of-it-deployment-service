@@ -23,7 +23,7 @@ public class GithubTagRepository(HttpClient client, ILogger<GithubTagRepository>
                    ?? new List<GithubTag>();
 
         return tags
-            .Select(tag => new Tag(tag.Name, tag.Commit.Sha))
+            .Select(tag => new Tag(tag.Name))
             .ToList();
     }
 
@@ -42,7 +42,7 @@ public class GithubTagRepository(HttpClient client, ILogger<GithubTagRepository>
 
         response.EnsureSuccessStatusCode();
 
-        return new Tag(tagName, sha);
+        return new Tag(tagName);
     }
 
     private async Task<string> GetLatestCommitSha(string repository, string branch)

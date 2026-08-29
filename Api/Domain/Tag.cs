@@ -1,3 +1,3 @@
 ﻿namespace Api.Domain;
 
-public record Tag(string Name, string CommitSha);
+public record Tag(string Name);

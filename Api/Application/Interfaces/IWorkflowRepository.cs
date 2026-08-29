@@ -4,5 +4,5 @@ namespace Api.Application.Interfaces;
 
 public interface IWorkflowRepository
 {
-    Task<Workflow?> GetWorkflow(string repository, string commitSha);
+    Task<Workflow?> GetWorkflow(string repository, Tag tag);
 }

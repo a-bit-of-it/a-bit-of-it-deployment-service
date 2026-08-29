@@ -1,5 +1,6 @@
 ﻿using Api.Application;
 using Api.Controllers.Requests;
+using Api.Domain;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -24,17 +25,17 @@ public class ApplicationsController(ApplicationService applicationService) : Con
     }
     
     [HttpGet("{id:int}/tags")]
-    public async Task<IActionResult> GetAvailableTags(int id)
+    public async Task<ActionResult<List<Tag>>> GetAvailableTags(int id)
     {
         var tags = await applicationService.GetTags(id);
         
         return Ok(tags);
     }
     
-    [HttpGet("{id:int}/workflows/{commitSha}")]
-    public async Task<IActionResult> GetAvailableTags(int id, string commitSha)
+    [HttpGet("{id:int}/workflows/{tag}")]
+    public async Task<IActionResult> GetWorkflow(int id, string tag)
     {
-        var workflow = await applicationService.GetWorkflow(id, commitSha);
+        var workflow = await applicationService.GetWorkflow(id, new Tag(tag));
         
         return Ok(workflow);
     }

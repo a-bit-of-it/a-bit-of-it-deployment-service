@@ -9,8 +9,8 @@ public interface IApplicationService
     Task<Application?> GetAsync(int id, CancellationToken ct = default);
     Task<List<Tag>> GetTags(int id, CancellationToken ct = default);
     Task ReleaseAsync(int applicationId, Tag selectedTag);
-    Task<Tag> CreateTag(int id, CancellationToken ct = default);
-    Task<Workflow?> GetWorkflow(int id, string commitSha, CancellationToken ct = default);
+    Task<Tag?> CreateTag(int id, CancellationToken ct = default);
+    Task<Workflow?> GetWorkflow(int id, string tag, CancellationToken ct = default);
     Task<Release?> GetLatestRelease(int id, CancellationToken ct = default);
     Task<Release?> GetRelease(int id, string tagName, CancellationToken ct = default);
     Task Rollback(int applicationId, Tag tag);
@@ -30,10 +30,9 @@ public class ApplicationService(HttpClient http) : IApplicationService
         return tags;
     }
     
-    public async Task<Workflow?> GetWorkflow(int id, string commitSha, CancellationToken ct = default)
+    public Task<Workflow?> GetWorkflow(int id, string tag, CancellationToken ct = default)
     {
-        var workflow = await http.GetFromJsonAsync<Workflow>($"api/applications/{id}/workflows/{commitSha}", ct);
-        return workflow;
+       return GetOrDefaultAsync<Workflow>($"api/applications/{id}/workflows/{tag}", ct);
     }
 
     public async Task ReleaseAsync(int id, Tag tag)
@@ -70,10 +69,13 @@ public class ApplicationService(HttpClient http) : IApplicationService
         await http.PostAsJsonAsync($"api/applications/{id}/rollbacks", body);
     }
 
-    public async Task<Tag> CreateTag(int id, CancellationToken ct = default)
+    public async Task<Tag?> CreateTag(int id, CancellationToken ct = default)
     {
         var response = await http.PostAsJsonAsync($"api/applications/{id}/tags", new { }, ct);
 
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+        
         if (response.IsSuccessStatusCode)
             return await response.Content.ReadFromJsonAsync<Tag>(cancellationToken: ct) ?? throw new Exception("Could not parse response.");
         
