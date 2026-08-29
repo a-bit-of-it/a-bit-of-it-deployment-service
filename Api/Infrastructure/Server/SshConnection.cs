@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using Api.Application.Interfaces;
 using Api.Domain;
+using Api.Infrastructure.Server.DTOs;
 using CSharpFunctionalExtensions;
 using JetBrains.Annotations;
 using Renci.SshNet;
@@ -35,28 +36,30 @@ public class SshConnection (Config config, ILogger<SshConnection> logger) : ISer
         return result.Map(dockerVersion => new ServerInterrogationInfo { DockerVersion = dockerVersion, IsOnline = true });
     }
 
-    public async Task<Result<DockerStatusInfo>> GetDockerStatus(Domain.Server server)
+    public async Task<Result<List<Component>>> GetComponents(Domain.Server server)
     {
         using var ssh = await Connect(server);
 
-        var versionResult = RunCommand(ssh, "docker --version");
-        var containersResult = RunCommand(ssh, "docker container ls --format '{{json .}}'");
+        var result = RunCommand(ssh, "docker container ls --format '{{json .}}'");
 
         ssh.Disconnect();
 
-        return Result.Combine(versionResult, containersResult)
-            .Map(() => new DockerStatusInfo
-            {
-                DockerVersion = versionResult.Value,
-                Containers = ParseContainers(containersResult.Value)
-            });
+        return result.Map(output => ParseContainers(output).Select(ToComponent).ToList());
     }
 
-    private static List<ContainerInfo> ParseContainers(string dockerLsOutput)
+    private static Component ToComponent(DockerContainer dto) => new(
+        Name: dto.Names,
+        ContainerName: dto.Names,
+        Image: dto.Image,
+        IsRunning: dto.State == "running",
+        Status: dto.Status,
+        Ports: dto.Ports);
+
+    private static List<DockerContainer> ParseContainers(string dockerLsOutput)
     {
         return dockerLsOutput
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(line => JsonSerializer.Deserialize<ContainerInfo>(line))
+            .Select(line => JsonSerializer.Deserialize<DockerContainer>(line))
             .Where(container => container != null)
             .Select(container => container!)
             .ToList();

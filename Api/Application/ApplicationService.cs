@@ -111,6 +111,38 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         return workflow;
     }
     
+    private static readonly Regex TrailingIndexPattern = new(@"-\d+$", RegexOptions.Compiled);
+
+    public async Task<List<Component>> GetContainers(int applicationId)
+    {
+        var customer = await customerRepository.GetCustomerByApplicationId(applicationId);
+
+        if (customer == null)
+            throw new NotFoundException($"Could not find customer from application id. Id = {applicationId}.");
+
+        var application = customer.Applications.FirstOrDefault(app => app.Id == applicationId);
+
+        if (application == null)
+            throw new NotFoundException($"Could not find application. Id = {applicationId}.");
+
+        var componentsResult = await server.GetComponents(application.Server);
+
+        if (componentsResult.IsFailure)
+            return [];
+
+        var containerNamePrefix = $"{customer.Name.Kebaberize()}-{application.Name.Kebaberize()}-";
+
+        return componentsResult.Value
+            .Where(component => component.ContainerName.StartsWith(containerNamePrefix))
+            .Select(component =>
+            {
+                var shortName = component.ContainerName[containerNamePrefix.Length..];
+                shortName = TrailingIndexPattern.Replace(shortName, "");
+                return component with { Name = shortName };
+            })
+            .ToList();
+    }
+
     public async Task<List<Domain.Application>> GetAll()
     {
         return await applicationRepository.GetApplications();
