@@ -51,46 +51,55 @@
     </div>
 
     <hr class="divider" />
-
-    <div class="status-row">
-        <div class="container-list">
-            @foreach (var container in _containers)
-            {
-                <div class="container-item">
-                    <span class="container-dot @ContainerStatusCssClass(container)"></span>
-                    <div class="container-details">
-                        <span class="container-name">@container.Name</span>
-                        <span class="container-status">@container.Status</span>
-                    </div>
+    
+    <h3>Components</h3>
+    
+    <div class="container-list">
+        @foreach (var container in _containers)
+        {
+            <div class="container-item">
+                <span class="container-dot @ContainerStatusCssClass(container.IsRunning)"></span>
+                <div class="container-details">
+                    <span class="container-name">@container.Name</span>
+                    <span class="container-status">@container.Status</span>
+                    <span class="container-status">@container.Image</span>
                 </div>
-            }
-        </div>
-
-        <div class="tag-list">
-            @foreach (var tag in _tags)
-            {
-                <div class="tag-item @(tag.Name == _selectedTag?.Name ? "selected" : "")"
-                     @onclick="() => SelectTag(tag)">
-                    <span class="tag-dot"></span>
-                    <span class="tag-name">@tag.Name</span>
-                </div>
-            }
-        </div>
+            </div>
+        }
     </div>
-
+    
     <hr class="divider" />
     
-    <div class="new-release-row">
+    <div class="tags-header">
+        <h3>Tags</h3>
         <button class="btn btn-secondary"
                 disabled="@_isPolling"
-                @onclick="CreateNewReleaseAsync">
+                @onclick="CreateNewTagAsync">
             @if (_isPolling)
             {
                 <span class="spinner spinner-inline"></span>
             }
-            Create new release
+            Create new tag
         </button>
     </div>
+    
+    
+    <div class="tag-list">
+        @foreach (var tag in _tags)
+        {
+            <div class="tag-item @(tag.Name == _selectedTag?.Name ? "selected" : "")"
+                 @onclick="() => SelectTag(tag)">
+                <span class="tag-dot"></span>
+                <span class="tag-name">@tag.Name</span>
+            </div>
+        }
+    </div>
+
+    <hr class="divider" />
+    
+    @* <div class="new-release-row"> *@
+    @* *@
+    @* </div> *@
 </div>
 
 @code {
@@ -137,11 +146,12 @@
         _ => "status-failure"
     };
 
-    private static string ContainerStatusCssClass(ContainerInfo container) =>
-        container.IsRunning ? "online" : "offline";
+    private static string ContainerStatusCssClass(bool isRunning) =>
+        isRunning ? "online" : "offline";
 
     protected override async Task OnInitializedAsync()
     {
+        // TODO A BFF would be nice
         _application = await ApplicationService.GetAsync(ApplicationId);
         _customer = await CustomerService.GetAsync(CustomerId);
         _tags = await ApplicationService.GetTags(ApplicationId);
@@ -198,7 +208,7 @@
         }
     }
 
-    private async Task CreateNewReleaseAsync()
+    private async Task CreateNewTagAsync()
     {
         if (_isPolling) return;
 
@@ -209,7 +219,9 @@
             return;
         }
 
-        _tags = await ApplicationService.GetTags(ApplicationId);
+        _tags.Insert(0, _selectedTag);
+        
+        StateHasChanged();
 
         StartPolling(_selectedTag);
     }
@@ -281,10 +293,15 @@
         display: flex;
         flex-direction: column;
         gap: 24px;
-        /*padding: 24px;*/
     }
 
     .release-panel {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .tags-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
@@ -467,7 +484,7 @@
 
     .container-list {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         gap: 8px;
         max-height: 500px;
         overflow-y: auto;
@@ -524,11 +541,11 @@
     }
 
     .tag-item {
-        width: 200px;
+        width: 175px;
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 12px 16px;
+        padding: 4px;
         border: 1px solid #e2e2e2;
         border-radius: 10px;
         cursor: pointer;
