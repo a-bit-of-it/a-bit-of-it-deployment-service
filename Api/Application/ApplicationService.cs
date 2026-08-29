@@ -111,6 +111,35 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         return workflow;
     }
     
+    public async Task<List<Component>> GetContainers(int applicationId)
+    {
+        var customer = await customerRepository.GetCustomerByApplicationId(applicationId);
+
+        if (customer == null)
+            throw new NotFoundException($"Could not find customer from application id. Id = {applicationId}.");
+
+        var application = customer.Applications.FirstOrDefault(app => app.Id == applicationId);
+
+        if (application == null)
+            throw new NotFoundException($"Could not find application. Id = {applicationId}.");
+
+        var componentsResult = await server.GetComponents(application.Server);
+
+        if (componentsResult.IsFailure)
+            return [];
+
+        var containerNamePrefix = ComponentNaming.GetContainerNamePrefix(customer.Name, application.Name);
+
+        return componentsResult.Value
+            .Where(component => component.ContainerName.StartsWith(containerNamePrefix))
+            .Select(component =>
+            {
+                var shortName = ComponentNaming.GetShortComponentName(component.ContainerName, containerNamePrefix);
+                return component with { Name = shortName };
+            })
+            .ToList();
+    }
+
     public async Task<List<Domain.Application>> GetAll()
     {
         return await applicationRepository.GetApplications();

@@ -52,6 +52,38 @@
 
     <hr class="divider" />
     
+    <h3>Components</h3>
+    
+    <div class="container-list">
+        @foreach (var container in _containers)
+        {
+            <div class="container-item">
+                <span class="container-dot @ContainerStatusCssClass(container.IsRunning)"></span>
+                <div class="container-details">
+                    <span class="container-name">@container.Name</span>
+                    <span class="container-status">@container.Status</span>
+                    <span class="container-status">@container.Image</span>
+                </div>
+            </div>
+        }
+    </div>
+    
+    <hr class="divider" />
+    
+    <div class="tags-header">
+        <h3>Tags</h3>
+        <button class="btn btn-secondary"
+                disabled="@_isPolling"
+                @onclick="CreateNewTagAsync">
+            @if (_isPolling)
+            {
+                <span class="spinner spinner-inline"></span>
+            }
+            Create new tag
+        </button>
+    </div>
+    
+    
     <div class="tag-list">
         @foreach (var tag in _tags)
         {
@@ -65,17 +97,9 @@
 
     <hr class="divider" />
     
-    <div class="new-release-row">
-        <button class="btn btn-secondary"
-                disabled="@_isPolling"
-                @onclick="CreateNewReleaseAsync">
-            @if (_isPolling)
-            {
-                <span class="spinner spinner-inline"></span>
-            }
-            Create new release
-        </button>
-    </div>
+    @* <div class="new-release-row"> *@
+    @* *@
+    @* </div> *@
 </div>
 
 @code {
@@ -89,6 +113,7 @@
     private Customer? _customer;
     
     private List<Tag> _tags = new();
+    private List<ContainerInfo> _containers = new();
     private Release? _latestRelease;
 
     private bool _isPolling;
@@ -121,12 +146,17 @@
         _ => "status-failure"
     };
 
+    private static string ContainerStatusCssClass(bool isRunning) =>
+        isRunning ? "online" : "offline";
+
     protected override async Task OnInitializedAsync()
     {
+        // TODO A BFF would be nice
         _application = await ApplicationService.GetAsync(ApplicationId);
         _customer = await CustomerService.GetAsync(CustomerId);
         _tags = await ApplicationService.GetTags(ApplicationId);
         _latestRelease = await ApplicationService.GetLatestRelease(ApplicationId);
+        _containers = await ApplicationService.GetContainers(ApplicationId);
 
         Tag? tag;
         if (_latestRelease == null)
@@ -178,7 +208,7 @@
         }
     }
 
-    private async Task CreateNewReleaseAsync()
+    private async Task CreateNewTagAsync()
     {
         if (_isPolling) return;
 
@@ -189,7 +219,9 @@
             return;
         }
 
-        _tags = await ApplicationService.GetTags(ApplicationId);
+        _tags.Insert(0, _selectedTag);
+        
+        StateHasChanged();
 
         StartPolling(_selectedTag);
     }
@@ -261,10 +293,15 @@
         display: flex;
         flex-direction: column;
         gap: 24px;
-        /*padding: 24px;*/
     }
 
     .release-panel {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .tags-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
@@ -432,6 +469,11 @@
         padding: 8px 0;
     }
 
+    .status-row {
+        display: flex;
+        gap: 24px;
+    }
+
     .tag-list {
         display: flex;
         flex-direction: column;
@@ -440,17 +482,70 @@
         overflow-y: auto;
     }
 
+    .container-list {
+        display: flex;
+        flex-direction: row;
+        gap: 8px;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+
+    .container-item {
+        width: 400px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        border: 1px solid #e2e2e2;
+        border-radius: 10px;
+    }
+
+    .container-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        background: #eee;
+    }
+
+    .container-dot.online {
+        background: #15803d;
+    }
+
+    .container-dot.offline {
+        background: #b91c1c;
+    }
+
+    .container-details {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .container-name {
+        font-weight: 600;
+        color: white;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .container-status {
+        font-size: 12px;
+        opacity: 0.7;
+    }
+
     .new-release-row {
         display: flex;
         justify-content: flex-end;
     }
 
     .tag-item {
-        width: 200px;
+        width: 175px;
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 12px 16px;
+        padding: 4px;
         border: 1px solid #e2e2e2;
         border-radius: 10px;
         cursor: pointer;

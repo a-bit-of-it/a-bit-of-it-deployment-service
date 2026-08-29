@@ -1,5 +1,7 @@
-﻿using Api.Application.Interfaces;
+﻿using System.Text.Json;
+using Api.Application.Interfaces;
 using Api.Domain;
+using Api.Infrastructure.Server.DTOs;
 using CSharpFunctionalExtensions;
 using JetBrains.Annotations;
 using Renci.SshNet;
@@ -33,7 +35,36 @@ public class SshConnection (Config config, ILogger<SshConnection> logger) : ISer
 
         return result.Map(dockerVersion => new ServerInterrogationInfo { DockerVersion = dockerVersion, IsOnline = true });
     }
-    
+
+    public async Task<Result<List<Component>>> GetComponents(Domain.Server server)
+    {
+        using var ssh = await Connect(server);
+
+        var result = RunCommand(ssh, "docker container ls --format '{{json .}}'");
+
+        ssh.Disconnect();
+
+        return result.Map(output => ParseContainers(output).Select(ToComponent).ToList());
+    }
+
+    private static Component ToComponent(DockerContainer dto) => new(
+        Name: dto.Names,
+        ContainerName: dto.Names,
+        Image: dto.Image,
+        IsRunning: dto.State == "running",
+        Status: dto.Status,
+        Ports: dto.Ports);
+
+    private static List<DockerContainer> ParseContainers(string dockerLsOutput)
+    {
+        return dockerLsOutput
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(line => JsonSerializer.Deserialize<DockerContainer>(line))
+            .Where(container => container != null)
+            .Select(container => container!)
+            .ToList();
+    }
+
     private async Task<SshClient> Connect(Domain.Server server)
     {
         logger.LogDebug("Connecting in...");

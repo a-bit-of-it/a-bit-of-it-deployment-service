@@ -24,4 +24,20 @@ public class ServersController(ServerService serverService) : ControllerBase
 
         return Ok(new FleetStatusResponse(allOnline));
     }
+
+    [HttpGet("{id:int}")]
+    public async Task<IActionResult> GetServer(int id)
+    {
+        var server = await serverService.GetServer(id);
+
+        return Ok(server);
+    }
+
+    [HttpGet("{id:int}/components")]
+    public async Task<IActionResult> GetComponents(int id)
+    {
+        var components = await serverService.GetComponents(id);
+
+        return Ok(components);
+    }
 }
