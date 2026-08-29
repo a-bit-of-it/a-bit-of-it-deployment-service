@@ -71,12 +71,4 @@ public class ApplicationsController(ApplicationService applicationService) : Con
 
         return Ok(release);
     }
-
-    [HttpPost("{id:int}/rollbacks")]
-    public async Task<IActionResult> Rollback(int id, [FromBody] DeploymentRequest request)
-    {
-        await applicationService.Rollback(id, request.Tag);
-
-        return Ok();
-    }
 }

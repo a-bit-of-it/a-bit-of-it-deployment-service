@@ -1,75 +1,63 @@
 ﻿using Api.Application.Interfaces;
 using Api.Domain;
 using CSharpFunctionalExtensions;
+using JetBrains.Annotations;
 using Renci.SshNet;
 
 namespace Api.Infrastructure.Server;
 
-public class SshConnection (Config config) : IServerConnection
+[UsedImplicitly]
+public class SshConnection (Config config, ILogger<SshConnection> logger) : IServerConnection
 {
-    public async Task<Result<ServerInterrogationInfo>> InterrogateServer(Domain.Server server)
+    public async Task<Result> Deploy(Domain.Server server, string containerNamePrefix, string remoteDir)
     {
-        using var ssh = new SshClient(server.Ip, config.Ssh.Username, config.Ssh.Password);
+        using var ssh = await Connect(server);
 
-        await ssh.ConnectAsync(CancellationToken.None);
-        
-        var dockerVersion = RunCommand(
+        var result = RunCommand(
             ssh,
-            "docker --version");
-        
+            $"cd {remoteDir} && docker compose -p {containerNamePrefix} pull && docker compose -p {containerNamePrefix} up -d --remove-orphans",
+            TimeSpan.FromMinutes(5));
+
         ssh.Disconnect();
 
-        return Result.Success(new ServerInterrogationInfo() {DockerVersion =  dockerVersion, IsOnline = true});
+        return result.IsFailure ? Result.Failure(result.Error) : Result.Success();
     }
     
-    public async Task<Result> PullDockerImage(Domain.Server server, DockerImage image)
+    public async Task<Result<ServerInterrogationInfo>> InterrogateServer(Domain.Server server)
     {
-        using var ssh = new SshClient(server.Ip, config.Ssh.Username, config.Ssh.Password);
+        using var ssh = await Connect(server);
 
-        await ssh.ConnectAsync(CancellationToken.None);
+        var result = RunCommand(ssh, "docker --version");
 
-        var cmd = $"docker pull {image.Image}";
-        var command = ssh.RunCommand(cmd);
-
-        if (command.ExitStatus is not 0)
-            return Result.Failure($"Command failed. ExitStatus: {command.ExitStatus}. Error: {command.Error}");
-        
         ssh.Disconnect();
 
-        return Result.Success();
+        return result.Map(dockerVersion => new ServerInterrogationInfo { DockerVersion = dockerVersion, IsOnline = true });
     }
-
-    public async Task Deploy(Domain.Server server, string containerNamePrefix, string remoteDir)
+    
+    private async Task<SshClient> Connect(Domain.Server server)
     {
-        using var ssh = new SshClient(server.Ip, config.Ssh.Username, config.Ssh.Password);
+        logger.LogDebug("Connecting in...");
+
+        var ssh = new SshClient(server.Ip, config.Ssh.Username, config.Ssh.Password);
         await ssh.ConnectAsync(CancellationToken.None);
 
-        var command = ssh.CreateCommand(
-            $"cd {remoteDir} && docker compose -p {containerNamePrefix} pull && docker compose -p {containerNamePrefix} up -d --remove-orphans"
-        );
-        command.CommandTimeout = TimeSpan.FromMinutes(5);
+        logger.LogDebug("Connected");
+
+        return ssh;
+    }
+
+    private static Result<string> RunCommand(SshClient ssh, string commandText, TimeSpan? timeout = null)
+    {
+        var command = ssh.CreateCommand(commandText);
+        if (timeout.HasValue)
+            command.CommandTimeout = timeout.Value;
 
         var output = command.Execute();
 
-        ssh.Disconnect();
-        
         if (command.ExitStatus != 0)
-        {
-            throw new InvalidOperationException(
-                $"Deploy failed on {server.Ip} (exit {command.ExitStatus}): {command.Error}");
-        }
-    }
-    
-    private string RunCommand(SshClient ssh, string command)
-    {
-        var result = ssh.RunCommand(command);
+            return Result.Failure<string>(
+                $"Command failed on {ssh.ConnectionInfo.Host}: {commandText} (exit {command.ExitStatus}): {command.Error}");
 
-        if (result.ExitStatus != 0)
-            throw new Exception(
-                $"Command failed: {command}. " +
-                $"ExitStatus: {result.ExitStatus}. " +
-                $"Error: {result.Error}");
-
-        return result.Result.Trim();
+        return Result.Success(output.Trim());
     }
 }

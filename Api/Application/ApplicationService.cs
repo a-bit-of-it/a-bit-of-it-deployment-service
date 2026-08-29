@@ -31,57 +31,45 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         if (!workflow.IsComplete || !workflow.IsSuccessful)
             throw new Exception("Workflow is not completed successfully.");
         
+        var release = await releaseRepository.GetRelease(application.Repository, tag.Name);
+
+        if (release != null)
+            logger.LogDebug("Tag {Tag} has been released before",  tag.Name);
+
         await PushAndDeploy(application, customer, tag.Name);
 
-        await releaseRepository.CreateRelease(application.Repository, tag.Name);
+        if (release != null)
+            await releaseRepository.SetLatestRelease(application.Repository, release.Id);
+        else
+            await releaseRepository.CreateRelease(application.Repository, tag.Name);
 
         logger.LogInformation("Deploy succeeded for {ApplicationName}", application.Name);
     }
 
-    public async Task Rollback(int applicationId, Tag tag)
-    {
-        logger.LogInformation("Beginning rollback...");
-
-        var customer = await customerRepository.GetCustomerByApplicationId(applicationId);
-
-        if (customer == null)
-            throw new NotFoundException($"Could not find customer from application id. Id = {applicationId}.");
-
-        var application = customer.Applications.FirstOrDefault(app => app.Id == applicationId);
-
-        if (application == null)
-            throw new NotFoundException($"Could not find application. Id = {applicationId}.");
-
-        var workflow = await workflowRepository.GetWorkflow(application.Repository, tag);
-
-        if (workflow == null)
-            throw new NotFoundException($"Could not find workflow for tag {tag.Name}.");
-
-        if (!workflow.IsComplete || !workflow.IsSuccessful)
-            throw new Exception("Workflow is not completed successfully.");
-
-        var release = await releaseRepository.GetRelease(application.Repository, tag.Name);
-
-        await PushAndDeploy(application, customer, tag.Name);
-
-        if (release == null)
-            await releaseRepository.CreateRelease(application.Repository, tag.Name);
-        else
-            await releaseRepository.SetLatestRelease(application.Repository, release.Id);
-
-        logger.LogInformation("Rollback succeeded for {ApplicationName}", application.Name);
-    }
-
     private async Task PushAndDeploy(Domain.Application application, Customer customer, string tagName)
     {
+        logger.LogInformation("Pushing deployment configuration to server...");
+
         var composeFile = await GetComposeFile(application.Repository, tagName);
         var customerName = customer.Name.Kebaberize();
         var containerNamePrefix =  $"{customerName}-{application.Name.Kebaberize()}";
         var remoteDeploymentPath = $"{customerName}/{application.Name.Kebaberize()}";
 
         var remoteDir = await filePusher.Push(application.Server, composeFile, remoteDeploymentPath);
+        
+        logger.LogInformation("Deployment configuration pushed");
+        
+        logger.LogInformation("Deploying application...");
 
-        await server.Deploy(application.Server, containerNamePrefix, remoteDir);
+        var deployResult = await server.Deploy(application.Server, containerNamePrefix, remoteDir);
+
+        if (deployResult.IsFailure)
+        {
+            logger.LogError("Application deploy failed: {Error}", deployResult.Error);
+            throw new InvalidOperationException(deployResult.Error);
+        }
+
+        logger.LogInformation("Application deployed");
     }
 
     public async Task<List<Tag>> GetTags(int id)
