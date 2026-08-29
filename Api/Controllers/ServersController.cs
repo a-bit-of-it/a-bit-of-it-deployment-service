@@ -24,4 +24,12 @@ public class ServersController(ServerService serverService) : ControllerBase
 
         return Ok(new FleetStatusResponse(allOnline));
     }
+    
+    [HttpGet("docker-status-test")]
+    public async Task<IActionResult> DockerStatusTest()
+    {
+        var dockerStatusTest = await serverService.GetDockerStuff();
+
+        return Ok(dockerStatusTest);
+    }
 }

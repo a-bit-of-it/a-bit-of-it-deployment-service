@@ -22,4 +22,19 @@ public class ServerService (IServerConnection serverConnection, ICustomerReposit
 
         return serverStatuses;
     }
+    
+    public async Task<List<DockerStatusInfo>> GetDockerStuff()
+    {
+        var servers = (await customerRepository.GetCustomers()).SelectMany(r => r.Applications).Select(r => r.Server).DistinctBy(s => s.Id).ToList();
+        var serverStatuses = new List<DockerStatusInfo>();
+        
+        foreach (var server in servers)
+        {
+            var serverStatus = await serverConnection.GetDockerStatus(server);
+            
+            serverStatuses.Add(serverStatus.Value);
+        }
+
+        return serverStatuses;
+    }
 }
