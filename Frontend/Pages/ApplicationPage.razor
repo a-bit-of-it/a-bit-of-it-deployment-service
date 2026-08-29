@@ -45,6 +45,8 @@
         </div>
     </div>
 
+    <hr class="divider" />
+    
     <div class="tag-list">
         @foreach (var tag in _tags)
         {
@@ -55,6 +57,8 @@
             </div>
         }
     </div>
+
+    <hr class="divider" />
     
     <div class="new-release-row">
         <button class="btn btn-secondary"
@@ -241,7 +245,10 @@
 
 <style>
     .app-page {
-
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        /*padding: 24px;*/
     }
 
     .release-panel {
@@ -249,10 +256,15 @@
         justify-content: space-between;
         align-items: flex-start;
     }
-    
+
+    .divider {
+        width: 100%;
+        border: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.75);
+        margin: 0;
+    }
 
     .app-name {
-        /*margin: 0;*/
         font-size: 15px;
         font-weight: 500;
     }
