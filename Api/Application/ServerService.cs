@@ -38,12 +38,51 @@ public class ServerService (IServerConnection serverConnection, ICustomerReposit
         return server;
     }
 
-    public async Task<List<Component>> GetComponents(int id)
+    public async Task<ServerComponents> GetComponents(int id)
     {
         var server = await GetServer(id);
 
         var componentsResult = await serverConnection.GetComponents(server);
+        var allComponents = componentsResult.IsFailure ? [] : componentsResult.Value;
 
-        return componentsResult.IsFailure ? [] : componentsResult.Value;
+        var customers = await customerRepository.GetCustomers();
+        var claimedContainerNames = new HashSet<string>();
+        var customerGroups = new List<CustomerComponents>();
+
+        foreach (var customer in customers)
+        {
+            var applicationsOnServer = customer.Applications.Where(app => app.Server.Id == id).ToList();
+
+            if (applicationsOnServer.Count == 0)
+                continue;
+
+            var applicationGroups = new List<ApplicationComponents>();
+
+            foreach (var application in applicationsOnServer)
+            {
+                var containerNamePrefix = ComponentNaming.GetContainerNamePrefix(customer.Name, application.Name);
+
+                var matchedComponents = allComponents
+                    .Where(component => component.ContainerName.StartsWith(containerNamePrefix))
+                    .Select(component => component with
+                    {
+                        Name = ComponentNaming.GetShortComponentName(component.ContainerName, containerNamePrefix)
+                    })
+                    .ToList();
+
+                foreach (var component in matchedComponents)
+                    claimedContainerNames.Add(component.ContainerName);
+
+                applicationGroups.Add(new ApplicationComponents(application.Id, application.Name, matchedComponents));
+            }
+
+            customerGroups.Add(new CustomerComponents(customer.Id, customer.Name, applicationGroups));
+        }
+
+        var unassigned = allComponents
+            .Where(component => !claimedContainerNames.Contains(component.ContainerName))
+            .ToList();
+
+        return new ServerComponents(customerGroups, unassigned);
     }
 }

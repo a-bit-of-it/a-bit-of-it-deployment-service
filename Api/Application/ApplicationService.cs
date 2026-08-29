@@ -111,8 +111,6 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         return workflow;
     }
     
-    private static readonly Regex TrailingIndexPattern = new(@"-\d+$", RegexOptions.Compiled);
-
     public async Task<List<Component>> GetContainers(int applicationId)
     {
         var customer = await customerRepository.GetCustomerByApplicationId(applicationId);
@@ -130,14 +128,13 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         if (componentsResult.IsFailure)
             return [];
 
-        var containerNamePrefix = $"{customer.Name.Kebaberize()}-{application.Name.Kebaberize()}-";
+        var containerNamePrefix = ComponentNaming.GetContainerNamePrefix(customer.Name, application.Name);
 
         return componentsResult.Value
             .Where(component => component.ContainerName.StartsWith(containerNamePrefix))
             .Select(component =>
             {
-                var shortName = component.ContainerName[containerNamePrefix.Length..];
-                shortName = TrailingIndexPattern.Replace(shortName, "");
+                var shortName = ComponentNaming.GetShortComponentName(component.ContainerName, containerNamePrefix);
                 return component with { Name = shortName };
             })
             .ToList();

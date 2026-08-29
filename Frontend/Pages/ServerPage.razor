@@ -9,27 +9,72 @@
     <h1>Server @(_server?.Ip ?? "")</h1>
 </div>
 
-@if (_components is null)
+@if (_serverComponents is null)
 {
     <p><em>Loading...</em></p>
 }
-else if (!_components.Any())
-{
-    <p>No components found.</p>
-}
 else
 {
-    <table class="table">
+    if (!_serverComponents.Customers.Any() && !_serverComponents.Unassigned.Any())
+    {
+        <p>No components found.</p>
+    }
+
+    @foreach (var customer in _serverComponents.Customers)
+    {
+        <div class="customer-card">
+            <h3 class="mb-0">@customer.CustomerName</h3>
+
+            @foreach (var application in customer.Applications)
+            {
+                <h4 class="application-heading">@application.ApplicationName</h4>
+
+                @if (application.Components.Any())
+                {
+                    @ComponentTable(application.Components)
+                }
+                else
+                {
+                    <p><em>No containers running.</em></p>
+                }
+            }
+        </div>
+    }
+
+    @if (_serverComponents.Unassigned.Any())
+    {
+        <div class="customer-card">
+            <h3 class="mb-0">Other containers</h3>
+
+            @ComponentTable(_serverComponents.Unassigned)
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Server? _server;
+    private ServerComponents? _serverComponents;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _server = await ServerService.GetAsync(Id);
+        _serverComponents = await ServerService.GetComponents(Id) ?? new ServerComponents([], []);
+    }
+
+    private RenderFragment ComponentTable(List<ContainerInfo> components) => @<table class="table">
         <thead>
             <tr>
-                <th>Container</th>
+                <th>Component</th>
                 <th>Status</th>
                 <th>Image</th>
                 <th>Ports</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var component in _components)
+            @foreach (var component in components)
             {
                 <tr>
                     <td>@component.Name</td>
@@ -42,21 +87,7 @@ else
                 </tr>
             }
         </tbody>
-    </table>
-}
-
-@code {
-    [Parameter]
-    public int Id { get; set; }
-
-    private Server? _server;
-    private List<ContainerInfo>? _components;
-
-    protected override async Task OnInitializedAsync()
-    {
-        _server = await ServerService.GetAsync(Id);
-        _components = await ServerService.GetComponents(Id);
-    }
+    </table>;
 }
 
 <style>
@@ -65,6 +96,27 @@ else
         justify-content: space-between;
         align-items: center;
         margin-bottom: 1rem;
+    }
+
+    .customer-card {
+        margin-bottom: 1.5rem;
+        padding: 1rem 1.25rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        width: fit-content;
+    }
+
+    .customer-card h3 {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+    }
+
+    .application-heading {
+        font-size: 14px;
+        font-weight: 600;
+        opacity: 0.8;
+        margin: 1rem 0 0.5rem;
     }
 
     .table {
