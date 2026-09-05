@@ -73,9 +73,9 @@
     <div class="tags-header">
         <h3>Tags</h3>
         <button class="btn btn-secondary"
-                disabled="@_isPolling"
+                disabled="@_isCreatingTag"
                 @onclick="CreateNewTagAsync">
-            @if (_isPolling)
+            @if (_isCreatingTag)
             {
                 <span class="spinner spinner-inline"></span>
             }
@@ -114,6 +114,7 @@
 
     private bool _isPolling;
     private bool _isReleasing;
+    private bool _isCreatingTag;
 
     private Tag? _selectedTag;
     private Workflow? _selectedTagWorkflow;
@@ -208,8 +209,12 @@
     {
         if (_isPolling) return;
 
+        _isCreatingTag = true;
+        StateHasChanged();
+        
         _selectedTag = await ApplicationService.CreateTag(ApplicationId);
         _selectedTagWorkflow = null;
+        _isCreatingTag = false;
         
         if (_selectedTag == null)
         {
