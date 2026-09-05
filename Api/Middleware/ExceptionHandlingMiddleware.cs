@@ -14,7 +14,7 @@ public class ExceptionHandlingMiddleware(
         }
         catch (NotFoundException ex)
         {
-            logger.LogWarning(ex, "Resource not found");
+            logger.LogWarning("Resource not found: {Message}", ex.Message);
 
             context.Response.StatusCode = StatusCodes.Status404NotFound;
 
