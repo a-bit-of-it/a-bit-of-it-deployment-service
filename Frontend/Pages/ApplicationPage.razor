@@ -87,11 +87,23 @@
     <div class="tag-list">
         @foreach (var tag in _tags)
         {
-            <div class="tag-item @(tag.Name == _selectedTag?.Name ? "selected" : "")"
-                 @onclick="() => SelectTag(tag)">
-                <span class="tag-dot"></span>
-                <span class="tag-name">@tag.Name</span>
-            </div>
+            var isLatestRelease = _latestRelease != null && tag.Name == _latestRelease.Name;
+            
+            @if (isLatestRelease)
+            {
+                <div class="tag-item @(tag.Name == _selectedTag?.Name ? "selected" : "")"
+                     @onclick="() => SelectTag(tag)">
+                    <span class="tag-dot"></span>
+                    <span class="tag-name">@tag.Name</span>
+                </div>
+            }
+            else
+            {
+                <div class="tag-item @(tag.Name == _selectedTag?.Name ? "selected" : "")"
+                     @onclick="() => SelectTag(tag)">
+                    <span class="tag-name">@tag.Name</span>
+                </div>
+            }
         }
     </div>
 
