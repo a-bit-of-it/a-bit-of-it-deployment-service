@@ -6,16 +6,16 @@ namespace Frontend.Services;
 
 public interface IServerService
 {
-    Task<FleetStatusResponse?> GetFleetStatus(CancellationToken ct = default);
+    Task<FleetStatus?> GetFleetStatus(CancellationToken ct = default);
     Task<Server?> GetAsync(int id, CancellationToken ct = default);
     Task<ServerContainers?> GetContainers(int id, CancellationToken ct = default);
 }
 
 public class ServerService(HttpClient http) : IServerService
 {
-    public async Task<FleetStatusResponse?> GetFleetStatus(CancellationToken ct = default)
+    public async Task<FleetStatus?> GetFleetStatus(CancellationToken ct = default)
     {
-        var status = await http.GetFromJsonAsync<FleetStatusResponse>("api/servers/fleet-status", ct);
+        var status = await http.GetFromJsonAsync<FleetStatus>("api/servers/fleet-status", ct);
         return status;
     }
 

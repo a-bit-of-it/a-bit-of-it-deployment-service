@@ -7,5 +7,5 @@ public interface IServerConnection
 {
     Task<Result<List<Container>>> GetContainers(Server server);
     Task<Result<string>> PushDeploymentConfig(Server server, string contents, string folder);
-    Task<Result> Deploy(Server server, string containerNamePrefix, string remoteDir);
+    Task<Result> Promote(Server server, string containerNamePrefix, string remoteDir);
 }

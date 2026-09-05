@@ -4,7 +4,7 @@ using Api.Infrastructure.Github.DTOs;
 
 namespace Api.Infrastructure.Github;
 
-public class GithubWorkflowRepository(HttpClient client, ILogger<GithubWorkflowRepository> logger) : IWorkflowRepository
+public class GithubWorkflowRepository(HttpClient client) : IWorkflowRepository
 {
     public async Task<Workflow?> GetWorkflow(string repository, Tag tag)
     {

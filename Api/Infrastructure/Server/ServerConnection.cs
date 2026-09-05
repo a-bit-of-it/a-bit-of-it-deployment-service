@@ -12,7 +12,7 @@ namespace Api.Infrastructure.Server;
 [UsedImplicitly]
 public class ServerConnection (Config config, ILogger<ServerConnection> logger) : IServerConnection
 {
-    public async Task<Result> Deploy(Domain.Server server, string containerNamePrefix, string remoteDir)
+    public async Task<Result> Promote(Domain.Server server, string containerNamePrefix, string remoteDir)
     {
         using var ssh = await Connect(server);
 

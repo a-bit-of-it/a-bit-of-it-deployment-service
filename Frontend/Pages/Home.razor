@@ -69,7 +69,7 @@ else
 
 @code {
     private List<Models.Customer>? _customers;
-    private FleetStatusResponse? _fleetStatus;
+    private FleetStatus? _fleetStatus;
 
     protected override async Task OnInitializedAsync()
     {
@@ -77,7 +77,7 @@ else
         _fleetStatus = await ServerService.GetFleetStatus();
     }
 
-    private static string FleetStatusLabel(FleetStatusResponse? fleetStatus)
+    private static string FleetStatusLabel(FleetStatus? fleetStatus)
     {
         if (fleetStatus == null)
             return "Unknown";
@@ -85,7 +85,7 @@ else
         return fleetStatus.IsOnline ? "Online" : "Offline";
     }
 
-    private static string FleetStatusCssClass(FleetStatusResponse? fleetStatus)
+    private static string FleetStatusCssClass(FleetStatus? fleetStatus)
     {
         if (fleetStatus == null)
             return "unknown";

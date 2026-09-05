@@ -19,6 +19,7 @@ builder.Services.AddSingleton(config);
 
 builder.Services.AddSingleton<CustomerService>();
 builder.Services.AddSingleton<ApplicationService>();
+builder.Services.AddSingleton<DeploymentService>();
 builder.Services.AddSingleton<ServerService>();
 
 builder.Services.AddSingleton<IServerConnection, ServerConnection>();
@@ -28,9 +29,9 @@ builder.Services.AddSingleton<IServerRepository, InMemoryRepository>();
 
 var httpClient = ConfigureGitHubClient(config);
 builder.Services.AddHttpClient<ITagRepository, GithubTagRepository>(httpClient);
+builder.Services.AddHttpClient<IWorkflowRepository, GithubWorkflowRepository>(httpClient);
 builder.Services.AddHttpClient<IReleaseRepository, GithubReleaseRepository>(httpClient);
-builder.Services.AddHttpClient<GithubDockerComposeFileFetcher>(httpClient);
-builder.Services.AddHttpClient<GithubWorkflowRepository>(httpClient);
+builder.Services.AddHttpClient<IDeploymentConfigFetcher, GithubDockerComposeFileFetcher>(httpClient);
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();

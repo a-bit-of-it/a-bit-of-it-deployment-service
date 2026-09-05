@@ -1,5 +1,4 @@
 ﻿using Api.Application;
-using Api.Controllers.Requests;
 using Api.Domain;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,14 +7,6 @@ namespace Api.Controllers;
 [Route("api/[controller]")]
 public class ApplicationsController(ApplicationService applicationService) : ControllerBase
 {
-    [HttpPost("{id:int}/deployments")]
-    public async Task<IActionResult> Deploy(int id, [FromBody] DeploymentRequest request)
-    {
-        await applicationService.Deploy(id, request.Tag);
-
-        return Ok();
-    }
-    
     [HttpPost("{id:int}/tags")]
     public async Task<IActionResult> GetTags(int id)
     {

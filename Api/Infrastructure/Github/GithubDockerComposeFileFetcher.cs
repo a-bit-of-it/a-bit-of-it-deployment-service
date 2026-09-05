@@ -1,10 +1,11 @@
 ﻿using System.Net;
 using System.Text;
+using Api.Application.Interfaces;
 using Api.Infrastructure.Github.DTOs;
 
 namespace Api.Infrastructure.Github;
 
-public class GithubDockerComposeFileFetcher(HttpClient client)
+public class GithubDockerComposeFileFetcher(HttpClient client) : IDeploymentConfigFetcher
 {
     private const string FileName = "docker-compose.deployment.yml";
 
