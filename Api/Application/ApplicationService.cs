@@ -86,12 +86,15 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
     
     public async Task<Tag> CreateTag(int id)
     {
+        logger.LogInformation("Creating tag...");
         var application = await applicationRepository.GetApplication(id);
         
         if (application is null)
             throw new NotFoundException("No application found.");
         
         var tag = await tagRepository.CreateTag(application.Repository);
+        
+        logger.LogInformation("Tag {TagName} created for {ApplicationName}", tag.Name, application.Name);
 
         return tag;
     }
@@ -106,7 +109,7 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         var workflow = await workflowRepository.GetWorkflow(application.Repository, tag);
         
         if  (workflow == null)
-            throw new NotFoundException($"Workflow for tag {tag} not found.");
+            throw new NotFoundException($"Workflow for tag {tag.Name} not found.");
         
         return workflow;
     }
