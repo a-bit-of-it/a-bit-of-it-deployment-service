@@ -96,10 +96,6 @@
     </div>
 
     <hr class="divider" />
-    
-    @* <div class="new-release-row"> *@
-    @* *@
-    @* </div> *@
 </div>
 
 @code {
@@ -213,6 +209,8 @@
         if (_isPolling) return;
 
         _selectedTag = await ApplicationService.CreateTag(ApplicationId);
+        _selectedTagWorkflow = null;
+        
         if (_selectedTag == null)
         {
             Console.WriteLine("Creating tag failed cannot poll.");
