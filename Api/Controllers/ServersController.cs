@@ -1,5 +1,6 @@
 ﻿using Api.Application;
-using Api.Controllers.Responses;
+using Api.Application.Models;
+using Api.Domain;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -8,36 +9,34 @@ namespace Api.Controllers;
 public class ServersController(ServerService serverService) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetServers()
+    public async Task<ActionResult<List<Server>>> GetServers()
     {
         var servers = await serverService.GetServers();
 
         return Ok(servers);
     }
     
-    [HttpGet("fleet-status")]
-    public async Task<IActionResult> FleetStatus()
-    {
-        var servers = await serverService.GetServers();
-
-        var allOnline = servers.All(server => server.IsOnline);
-
-        return Ok(new FleetStatusResponse(allOnline));
-    }
-
     [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetServer(int id)
+    public async Task<ActionResult<Server>> GetServer(int id)
     {
         var server = await serverService.GetServer(id);
 
         return Ok(server);
     }
-
-    [HttpGet("{id:int}/components")]
-    public async Task<IActionResult> GetComponents(int id)
+    
+    [HttpGet("fleet-status")]
+    public async Task<ActionResult<FleetStatus>> FleetStatus()
     {
-        var components = await serverService.GetComponents(id);
+        var fleetStatus = await serverService.GetFleetStatus();
 
-        return Ok(components);
+        return Ok(fleetStatus);
+    }
+
+    [HttpGet("{id:int}/containers")]
+    public async Task<ActionResult<ServerContainers>> GetContainers(int id)
+    {
+        var serverContainers = await serverService.GetContainers(id);
+
+        return Ok(serverContainers);
     }
 }

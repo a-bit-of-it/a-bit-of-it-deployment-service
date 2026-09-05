@@ -21,10 +21,10 @@ builder.Services.AddSingleton<CustomerService>();
 builder.Services.AddSingleton<ApplicationService>();
 builder.Services.AddSingleton<ServerService>();
 
-builder.Services.AddSingleton<IServerConnection, SshConnection>();
-builder.Services.AddSingleton<IFilePusher, SftpConnection>();
+builder.Services.AddSingleton<IServerConnection, ServerConnection>();
 builder.Services.AddSingleton<ICustomerRepository, InMemoryRepository>();
 builder.Services.AddSingleton<IApplicationRepository, InMemoryRepository>();
+builder.Services.AddSingleton<IServerRepository, InMemoryRepository>();
 
 var httpClient = ConfigureGitHubClient(config);
 builder.Services.AddHttpClient<ITagRepository, GithubTagRepository>(httpClient);

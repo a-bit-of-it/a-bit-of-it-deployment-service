@@ -5,7 +5,7 @@ namespace Api.Application.Interfaces;
 
 public interface IServerConnection
 {
-    Task<Result<ServerInterrogationInfo>> InterrogateServer(Server server);
-    Task<Result<List<Component>>> GetComponents(Server server);
+    Task<Result<List<Container>>> GetContainers(Server server);
+    Task<Result<string>> PushDeploymentConfig(Server server, string contents, string folder);
     Task<Result> Deploy(Server server, string containerNamePrefix, string remoteDir);
 }

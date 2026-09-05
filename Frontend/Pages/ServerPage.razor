@@ -9,18 +9,18 @@
     <h1>Server @(_server?.Ip ?? "")</h1>
 </div>
 
-@if (_serverComponents is null)
+@if (_serverContainers is null)
 {
     <p><em>Loading...</em></p>
 }
 else
 {
-    if (!_serverComponents.Customers.Any() && !_serverComponents.Unassigned.Any())
+    if (!_serverContainers.Customers.Any())
     {
-        <p>No components found.</p>
+        <p>No containers found.</p>
     }
 
-    @foreach (var customer in _serverComponents.Customers)
+    @foreach (var customer in _serverContainers.Customers)
     {
         <div class="customer-card">
             <h3 class="mb-0">@customer.CustomerName</h3>
@@ -29,24 +29,15 @@ else
             {
                 <h4 class="application-heading">@application.ApplicationName</h4>
 
-                @if (application.Components.Any())
+                @if (application.Containers.Any())
                 {
-                    @ComponentTable(application.Components)
+                    @ContainerTable(application.Containers)
                 }
                 else
                 {
                     <p><em>No containers running.</em></p>
                 }
             }
-        </div>
-    }
-
-    @if (_serverComponents.Unassigned.Any())
-    {
-        <div class="customer-card">
-            <h3 class="mb-0">Other containers</h3>
-
-            @ComponentTable(_serverComponents.Unassigned)
         </div>
     }
 }
@@ -56,34 +47,34 @@ else
     public int Id { get; set; }
 
     private Server? _server;
-    private ServerComponents? _serverComponents;
+    private ServerContainers? _serverContainers;
 
     protected override async Task OnInitializedAsync()
     {
         _server = await ServerService.GetAsync(Id);
-        _serverComponents = await ServerService.GetComponents(Id) ?? new ServerComponents([], []);
+        _serverContainers = await ServerService.GetContainers(Id) ?? new ServerContainers([]);
     }
 
-    private RenderFragment ComponentTable(List<ContainerInfo> components) => @<table class="table">
+    private RenderFragment ContainerTable(List<ApplicationContainer> containers) => @<table class="table">
         <thead>
             <tr>
-                <th>Component</th>
+                <th>Container</th>
                 <th>Status</th>
                 <th>Image</th>
                 <th>Ports</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var component in components)
+            @foreach (var container in containers)
             {
                 <tr>
-                    <td>@component.Name</td>
+                    <td>@container.Name</td>
                     <td>
-                        <span class="status-dot @(component.IsRunning ? "online" : "offline")"></span>
-                        @component.Status
+                        <span class="status-dot @(container.IsRunning ? "online" : "offline")"></span>
+                        @container.Status
                     </td>
-                    <td>@component.Image</td>
-                    <td>@component.Ports</td>
+                    <td>@container.Image</td>
+                    <td>@container.Ports</td>
                 </tr>
             }
         </tbody>

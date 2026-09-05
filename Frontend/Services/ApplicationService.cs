@@ -12,9 +12,7 @@ public interface IApplicationService
     Task<Tag?> CreateTag(int id, CancellationToken ct = default);
     Task<Workflow?> GetWorkflow(int id, string tag, CancellationToken ct = default);
     Task<Release?> GetLatestRelease(int id, CancellationToken ct = default);
-    Task<Release?> GetRelease(int id, string tagName, CancellationToken ct = default);
-    Task Rollback(int applicationId, Tag tag);
-    Task<List<ContainerInfo>> GetContainers(int id, CancellationToken ct = default);
+    Task<List<ApplicationContainer>> GetContainers(int id, CancellationToken ct = default);
 }
 
 public class ApplicationService(HttpClient http) : IApplicationService
@@ -70,10 +68,11 @@ public class ApplicationService(HttpClient http) : IApplicationService
         await http.PostAsJsonAsync($"api/applications/{id}/rollbacks", body);
     }
 
-    public async Task<List<ContainerInfo>> GetContainers(int id, CancellationToken ct = default)
+    public async Task<List<ApplicationContainer>> GetContainers(int id, CancellationToken ct = default)
     {
-        var containers = await http.GetFromJsonAsync<List<ContainerInfo>>($"api/applications/{id}/containers", ct) ?? [];
-        return containers;
+        var containers = await http.GetFromJsonAsync<ApplicationContainers>($"api/applications/{id}/containers", ct);
+        
+        return containers?.Containers ?? [];
     }
 
     public async Task<Tag?> CreateTag(int id, CancellationToken ct = default)

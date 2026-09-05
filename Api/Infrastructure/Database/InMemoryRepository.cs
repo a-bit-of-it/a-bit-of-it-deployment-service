@@ -5,7 +5,7 @@ using Api.Domain;
 namespace Api.Infrastructure.Database;
 
 // Temp stuff
-public class InMemoryRepository : ICustomerRepository, IApplicationRepository
+public class InMemoryRepository : ICustomerRepository, IApplicationRepository, IServerRepository
 {
     private readonly List<Customer> _users;
     
@@ -53,6 +53,11 @@ public class InMemoryRepository : ICustomerRepository, IApplicationRepository
         return Task.FromResult(_users.FirstOrDefault(u => u.Applications.Any(a => a.Id == applicationId)));
     }
 
+    public Task<List<Customer>> GetCustomersByServerId(int serverId)
+    {
+        return Task.FromResult(_users.Where(user => user.Applications.Any(r => r.Server.Id == serverId)).ToList());
+    }
+
     public Task<List<Domain.Application>> GetApplications()
     {
         return Task.FromResult(_users.SelectMany(x => x.Applications).ToList());
@@ -61,5 +66,21 @@ public class InMemoryRepository : ICustomerRepository, IApplicationRepository
     public Task<Domain.Application?> GetApplication(int id)
     {
         return Task.FromResult(_users.SelectMany(x => x.Applications).FirstOrDefault(app => app.Id == id));
+    }
+
+    public Task<List<Domain.Server>> GetServers()
+    {
+        return Task.FromResult(_users.SelectMany(customer => customer.Applications)
+            .Select(application => application.Server)
+            .DistinctBy(s => s.Id)
+            .ToList());
+    }
+
+    public Task<Domain.Server?> GetServer(int id)
+    {
+        return Task.FromResult(_users.SelectMany(customer => customer.Applications)
+            .Select(application => application.Server)
+            .DistinctBy(s => s.Id)
+            .FirstOrDefault(server => server.Id == id));
     }
 }

@@ -8,7 +8,7 @@ public interface IServerService
 {
     Task<FleetStatusResponse?> GetFleetStatus(CancellationToken ct = default);
     Task<Server?> GetAsync(int id, CancellationToken ct = default);
-    Task<ServerComponents?> GetComponents(int id, CancellationToken ct = default);
+    Task<ServerContainers?> GetContainers(int id, CancellationToken ct = default);
 }
 
 public class ServerService(HttpClient http) : IServerService
@@ -31,8 +31,8 @@ public class ServerService(HttpClient http) : IServerService
         return await response.Content.ReadFromJsonAsync<Server>(cancellationToken: ct);
     }
 
-    public async Task<ServerComponents?> GetComponents(int id, CancellationToken ct = default)
+    public async Task<ServerContainers?> GetContainers(int id, CancellationToken ct = default)
     {
-        return await http.GetFromJsonAsync<ServerComponents>($"api/servers/{id}/components", ct);
+        return await http.GetFromJsonAsync<ServerContainers>($"api/servers/{id}/containers", ct);
     }
 }

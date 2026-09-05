@@ -1,5 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 using Api.Application.Interfaces;
+using Api.Application.Models;
 using Api.Domain;
 using Api.Exceptions;
 using Api.Infrastructure.Github;
@@ -7,7 +8,7 @@ using Humanizer;
 
 namespace Api.Application;
 
-public class ApplicationService (ICustomerRepository customerRepository, IApplicationRepository applicationRepository, IServerConnection server, IFilePusher filePusher, GithubDockerComposeFileFetcher dockerComposeFileFetcher, ITagRepository tagRepository, GithubWorkflowRepository workflowRepository, IReleaseRepository releaseRepository, ILogger<ApplicationService> logger)
+public class ApplicationService (ICustomerRepository customerRepository, IApplicationRepository applicationRepository, IServerConnection server, GithubDockerComposeFileFetcher dockerComposeFileFetcher, ITagRepository tagRepository, GithubWorkflowRepository workflowRepository, IReleaseRepository releaseRepository, ILogger<ApplicationService> logger)
 {
     public async Task Deploy(int applicationId, Tag tag)
     {
@@ -55,19 +56,19 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         var containerNamePrefix =  $"{customerName}-{application.Name.Kebaberize()}";
         var remoteDeploymentPath = $"{customerName}/{application.Name.Kebaberize()}";
 
-        var remoteDir = await filePusher.Push(application.Server, composeFile, remoteDeploymentPath);
+        var pushResult = await server.PushDeploymentConfig(application.Server, composeFile, remoteDeploymentPath);
+        
+        if (pushResult.IsFailure)
+            throw new Exception($"Could not push deployment configuration to server with id = {application.Server.Id}. Error = {pushResult.Error}");
         
         logger.LogInformation("Deployment configuration pushed");
         
         logger.LogInformation("Deploying application...");
 
-        var deployResult = await server.Deploy(application.Server, containerNamePrefix, remoteDir);
+        var deployResult = await server.Deploy(application.Server, containerNamePrefix, pushResult.Value);
 
         if (deployResult.IsFailure)
-        {
-            logger.LogError("Application deploy failed: {Error}", deployResult.Error);
-            throw new InvalidOperationException(deployResult.Error);
-        }
+            throw new Exception($"Deployment failed to server with id = {application.Server.Id}. Error = {deployResult.Error}");
 
         logger.LogInformation("Application deployed");
     }
@@ -114,7 +115,7 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         return workflow;
     }
     
-    public async Task<List<Component>> GetContainers(int applicationId)
+    public async Task<ApplicationContainers> GetContainers(int applicationId)
     {
         var customer = await customerRepository.GetCustomerByApplicationId(applicationId);
 
@@ -126,21 +127,26 @@ public class ApplicationService (ICustomerRepository customerRepository, IApplic
         if (application == null)
             throw new NotFoundException($"Could not find application. Id = {applicationId}.");
 
-        var componentsResult = await server.GetComponents(application.Server);
-
-        if (componentsResult.IsFailure)
-            return [];
+        var result = await server.GetContainers(application.Server);
+        
+        if (result.IsFailure)
+            throw new Exception($"Could not get containers on server with id {application.Server.Id}. Error = {result.Error}");
 
         var containerNamePrefix = ComponentNaming.GetContainerNamePrefix(customer.Name, application.Name);
 
-        return componentsResult.Value
-            .Where(component => component.ContainerName.StartsWith(containerNamePrefix))
-            .Select(component =>
-            {
-                var shortName = ComponentNaming.GetShortComponentName(component.ContainerName, containerNamePrefix);
-                return component with { Name = shortName };
-            })
-            .ToList();
+        var applicationContainers = result.Value
+            .Where(component => component.ContainerName.StartsWith(containerNamePrefix));
+        
+        var containers = applicationContainers
+            .Select(container => new ApplicationContainer(ComponentNaming.GetShortComponentName(container.Name, containerNamePrefix), 
+                container.ContainerName, 
+                container.Image, 
+                container.IsRunning, 
+                container.Status, 
+                container.Ports)
+            ).ToList();
+        
+        return new ApplicationContainers(applicationId, application.Name, containers);
     }
 
     public async Task<List<Domain.Application>> GetAll()
